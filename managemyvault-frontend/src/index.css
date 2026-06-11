@@ -1,0 +1,256 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   ManageMyVault — Theme System & Base Layer
+   ============================================ */
+
+:root {
+  /* Light theme variables */
+  --color-vault-base: #F8FAFC;
+  --color-vault-surface: #FFFFFF;
+  --color-vault-card: #FFFFFF;
+  --color-vault-elevated: #F1F5F9;
+
+  --color-border-subtle: #E2E8F0;
+  --color-border-default: #CBD5E1;
+  --color-border-accent: #94A3B8;
+
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
+  --color-text-disabled: #94A3B8;
+  --color-glass-panel-bg: rgba(255, 255, 255, 0.85);
+}
+
+.dark {
+  /* Dark theme variables */
+  --color-vault-base: #0A0E1A;
+  --color-vault-surface: #0F1629;
+  --color-vault-card: #141B35;
+  --color-vault-elevated: #1A2240;
+
+  --color-border-subtle: #1E2D4A;
+  --color-border-default: #2A3F6B;
+  --color-border-accent: #3B5998;
+
+  --color-text-primary: #F0F4FF;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #475569;
+  --color-text-disabled: #2D3748;
+  --color-glass-panel-bg: rgba(20, 27, 53, 0.85);
+}
+
+@layer base {
+  * {
+    @apply border-border-subtle;
+  }
+
+  html {
+    @apply antialiased;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-vault-base text-text-primary font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-vault-base;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border-default rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-border-accent;
+  }
+
+  /* Focus ring */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-primary ring-offset-2 ring-offset-vault-base;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-brand-primary/30 text-text-primary;
+  }
+}
+
+/* ============================================
+   Component Layer
+   ============================================ */
+
+@layer components {
+  /* Glass morphism panel */
+  .glass-panel {
+    background-color: var(--color-glass-panel-bg);
+    @apply backdrop-blur-md border border-border-subtle rounded-xl shadow-lg;
+  }
+
+  /* Elevated card */
+  .card-elevated {
+    @apply bg-vault-card border border-border-subtle rounded-xl shadow-card
+           transition-all duration-300 ease-out
+           hover:border-border-accent hover:shadow-card-hover;
+  }
+
+  /* Glow border on hover */
+  .glow-border {
+    @apply border border-border-subtle rounded-xl
+           transition-all duration-300
+           hover:border-brand-primary hover:shadow-glow-blue;
+  }
+
+  /* Input field styling */
+  .input-field {
+    @apply w-full bg-vault-elevated border border-border-default rounded-lg
+           px-4 py-2.5 text-text-primary placeholder-text-muted
+           transition-all duration-200
+           focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/50
+           focus:outline-none;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-brand-primary hover:bg-brand-primary-hover
+           text-white font-medium rounded-lg
+           px-4 py-2.5 transition-all duration-200
+           focus:ring-2 focus:ring-brand-primary/50 focus:ring-offset-2 focus:ring-offset-vault-base
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-vault-elevated hover:bg-vault-card
+           text-text-secondary hover:text-text-primary
+           border border-border-default hover:border-border-accent
+           font-medium rounded-lg
+           px-4 py-2.5 transition-all duration-200
+           focus:ring-2 focus:ring-brand-secondary/50 focus:ring-offset-2 focus:ring-offset-vault-base;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2
+           text-text-secondary hover:text-text-primary
+           hover:bg-vault-elevated
+           font-medium rounded-lg
+           px-4 py-2.5 transition-all duration-200;
+  }
+
+  /* Danger button */
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2
+           bg-status-danger/10 hover:bg-status-danger/20
+           text-status-danger
+           border border-status-danger/30 hover:border-status-danger/50
+           font-medium rounded-lg
+           px-4 py-2.5 transition-all duration-200;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5
+           text-xs font-medium rounded-full
+           border;
+  }
+
+  .badge-success {
+    @apply badge bg-status-success/10 text-status-success border-status-success/30;
+  }
+
+  .badge-warning {
+    @apply badge bg-status-warning/10 text-status-warning border-status-warning/30;
+  }
+
+  .badge-danger {
+    @apply badge bg-status-danger/10 text-status-danger border-status-danger/30;
+  }
+
+  .badge-info {
+    @apply badge bg-status-info/10 text-status-info border-status-info/30;
+  }
+
+  /* Sidebar item */
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2
+           text-sm text-text-secondary
+           rounded-lg transition-all duration-200
+           hover:bg-vault-elevated hover:text-text-primary
+           cursor-pointer;
+  }
+
+  .sidebar-item-active {
+    @apply sidebar-item bg-brand-primary/10 text-brand-primary
+           border-l-2 border-brand-primary;
+  }
+
+  /* Stat card */
+  .stat-card {
+    @apply bg-vault-card border border-border-subtle rounded-xl p-5
+           transition-all duration-300
+           hover:border-border-accent;
+  }
+
+  /* Table */
+  .data-table {
+    @apply w-full text-sm text-left;
+  }
+
+  .data-table thead {
+    @apply bg-vault-elevated text-text-muted uppercase text-xs tracking-wider;
+  }
+
+  .data-table th {
+    @apply px-4 py-3 font-medium;
+  }
+
+  .data-table td {
+    @apply px-4 py-3 border-t border-border-subtle;
+  }
+
+  .data-table tbody tr {
+    @apply hover:bg-vault-elevated transition-colors duration-150;
+  }
+}
+
+/* ============================================
+   Utility Layer
+   ============================================ */
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-accent;
+  }
+
+  .border-gradient {
+    border-image: linear-gradient(to right, #3B82F6, #22D3EE) 1;
+  }
+
+  .animate-delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .animate-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animate-delay-300 {
+    animation-delay: 300ms;
+  }
+}

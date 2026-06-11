@@ -1,0 +1,32 @@
+# Node / Frontend dependencies & builds
+node_modules/
+managemyvault-frontend/node_modules/
+managemyvault-frontend/dist/
+managemyvault-frontend/dist-ssr/
+
+# Java / Backend build files
+target/
+managemyvault-backend/target/
+managemyvault-backend/.flattened-pom.xml
+managemyvault-backend/dependency-reduced-pom.xml
+
+# Logs
+*.log
+logs/
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# Local Env / secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
