@@ -57,7 +57,7 @@ export default function AppShell() {
               <Link
                 to="/organizations"
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  location.pathname.startsWith('/organizations')
+                  location.pathname.startsWith('/organizations') || location.pathname.startsWith('/org')
                     ? 'bg-brand-primary/10 text-brand-primary'
                     : 'text-text-secondary hover:text-text-primary hover:bg-vault-elevated'
                 }`}
