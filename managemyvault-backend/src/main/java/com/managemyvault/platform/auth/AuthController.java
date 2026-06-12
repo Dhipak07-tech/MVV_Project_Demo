@@ -2,6 +2,7 @@ package com.managemyvault.platform.auth;
 
 import com.managemyvault.platform.auth.dto.AuthResponse;
 import com.managemyvault.platform.auth.dto.LoginRequest;
+import com.managemyvault.platform.auth.dto.OrgLoginRequest;
 import com.managemyvault.platform.auth.dto.RefreshTokenRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -26,6 +27,15 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest request) {
         AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Organization member login.
+     */
+    @PostMapping("/login/org")
+    public ResponseEntity<AuthResponse> loginOrg(@RequestBody @Valid OrgLoginRequest request) {
+        AuthResponse response = authService.loginOrg(request);
         return ResponseEntity.ok(response);
     }
 

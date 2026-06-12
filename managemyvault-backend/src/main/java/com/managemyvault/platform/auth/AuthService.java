@@ -4,8 +4,11 @@ import com.managemyvault.common.security.JwtTokenProvider;
 import com.managemyvault.common.security.UserPrincipal;
 import com.managemyvault.platform.auth.dto.AuthResponse;
 import com.managemyvault.platform.auth.dto.LoginRequest;
+import com.managemyvault.platform.auth.dto.OrgLoginRequest;
 import com.managemyvault.platform.domain.PlatformUser;
 import com.managemyvault.platform.repository.PlatformUserRepository;
+import com.managemyvault.organization.domain.OrganizationMember;
+import com.managemyvault.organization.repository.OrganizationMemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,9 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
- * Authentication service for platform-level users.
+ * Authentication service for platform-level users and organization members.
  * Handles login, token refresh, and logout operations.
  */
 @Service
@@ -28,6 +32,7 @@ import java.time.Instant;
 public class AuthService {
 
     private final PlatformUserRepository platformUserRepository;
+    private final OrganizationMemberRepository organizationMemberRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final StringRedisTemplate redisTemplate;
@@ -86,9 +91,60 @@ public class AuthService {
     }
 
     /**
+     * Authenticate an organization member and issue JWT tokens.
+     */
+    @Transactional
+    public AuthResponse loginOrg(OrgLoginRequest request) {
+        OrganizationMember member = organizationMemberRepository.findByOrganizationIdAndEmail(
+                request.getOrganizationId(), request.getEmail())
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+
+        if (!member.isActive()) {
+            throw new BadCredentialsException("Account is disabled");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), member.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+
+        // Update last login
+        member.setLastLoginAt(Instant.now());
+        organizationMemberRepository.save(member);
+
+        // Generate tokens with orgId embedded
+        UserPrincipal principal = UserPrincipal.orgMember(
+                member.getId(),
+                member.getEmail(),
+                member.getPasswordHash(),
+                member.getFullName(),
+                member.getOrgRole().name(),
+                member.getOrganizationId()
+        );
+
+        String accessToken = tokenProvider.generateAccessToken(principal);
+        String refreshToken = tokenProvider.generateRefreshToken(principal);
+
+        log.info("Organization member logged in: {} for org: {}", member.getEmail(), member.getOrganizationId());
+
+        return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(accessTokenExpiration / 1000)
+                .user(AuthResponse.UserInfo.builder()
+                        .id(member.getId().toString())
+                        .email(member.getEmail())
+                        .fullName(member.getFullName())
+                        .role(member.getOrgRole().name())
+                        .organizationId(member.getOrganizationId().toString())
+                        .build())
+                .build();
+    }
+
+    /**
      * Refresh an access token using a valid refresh token.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse refreshToken(String refreshToken) {
         if (!tokenProvider.validateToken(refreshToken)) {
             throw new BadCredentialsException("Invalid or expired refresh token");
@@ -101,20 +157,60 @@ public class AuthService {
         }
 
         var userId = tokenProvider.extractUserId(refreshToken);
-        PlatformUser user = platformUserRepository.findById(userId)
-                .orElseThrow(() -> new BadCredentialsException("User not found"));
+        UUID orgId = tokenProvider.extractOrganizationId(refreshToken);
 
-        if (!user.isActive()) {
-            throw new BadCredentialsException("Account is disabled");
+        UserPrincipal principal;
+        AuthResponse.UserInfo userInfo;
+
+        if (orgId == null) {
+            // Platform user refresh
+            PlatformUser user = platformUserRepository.findById(userId)
+                    .orElseThrow(() -> new BadCredentialsException("User not found"));
+
+            if (!user.isActive()) {
+                throw new BadCredentialsException("Account is disabled");
+            }
+
+            principal = UserPrincipal.platformUser(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getPasswordHash(),
+                    user.getFullName(),
+                    user.getPlatformRole().name()
+            );
+
+            userInfo = AuthResponse.UserInfo.builder()
+                    .id(user.getId().toString())
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .role(user.getPlatformRole().name())
+                    .build();
+        } else {
+            // Org member refresh
+            OrganizationMember member = organizationMemberRepository.findById(userId)
+                    .orElseThrow(() -> new BadCredentialsException("Member not found"));
+
+            if (!member.isActive()) {
+                throw new BadCredentialsException("Account is disabled");
+            }
+
+            principal = UserPrincipal.orgMember(
+                    member.getId(),
+                    member.getEmail(),
+                    member.getPasswordHash(),
+                    member.getFullName(),
+                    member.getOrgRole().name(),
+                    member.getOrganizationId()
+            );
+
+            userInfo = AuthResponse.UserInfo.builder()
+                    .id(member.getId().toString())
+                    .email(member.getEmail())
+                    .fullName(member.getFullName())
+                    .role(member.getOrgRole().name())
+                    .organizationId(member.getOrganizationId().toString())
+                    .build();
         }
-
-        UserPrincipal principal = UserPrincipal.platformUser(
-                user.getId(),
-                user.getEmail(),
-                user.getPasswordHash(),
-                user.getFullName(),
-                user.getPlatformRole().name()
-        );
 
         // Issue new tokens (token rotation)
         String newAccessToken = tokenProvider.generateAccessToken(principal);
@@ -128,12 +224,7 @@ public class AuthService {
                 .refreshToken(newRefreshToken)
                 .tokenType("Bearer")
                 .expiresIn(accessTokenExpiration / 1000)
-                .user(AuthResponse.UserInfo.builder()
-                        .id(user.getId().toString())
-                        .email(user.getEmail())
-                        .fullName(user.getFullName())
-                        .role(user.getPlatformRole().name())
-                        .build())
+                .user(userInfo)
                 .build();
     }
 
