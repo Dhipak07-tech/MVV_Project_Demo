@@ -15,6 +15,13 @@ import AfterHours from '../features/organizations/components/workspace/AfterHour
 import OnsiteInfo from '../features/organizations/components/workspace/OnsiteInfo';
 import SiteSummaryV2 from '../features/organizations/components/workspace/SiteSummaryV2';
 
+// Sprint 3 Pages
+import PasswordsPage from '../features/organizations/components/workspace/docs/PasswordsPage';
+import DocumentsPage from '../features/organizations/components/workspace/docs/DocumentsPage';
+import ExceptionsLog from '../features/organizations/components/workspace/docs/ExceptionsLog';
+import TrackersPage from '../features/organizations/components/workspace/docs/TrackersPage';
+import NetworksAndMfaPage from '../features/organizations/components/workspace/docs/NetworksAndMfaPage';
+
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('accessToken');
   if (!token) return <Navigate to="/login" replace />;
@@ -48,6 +55,22 @@ export const router = createBrowserRouter([
           { path: 'after-hours', element: <AfterHours /> },
           { path: 'onsite-information', element: <OnsiteInfo /> },
           { path: 'testing/site-summary-v2', element: <SiteSummaryV2 /> },
+          
+          // Core Documentation (Sprint 3)
+          { path: 'passwords', element: <PasswordsPage /> },
+          { path: 'docs/documents', element: <DocumentsPage /> },
+          { path: 'docs/configurations', element: <DocumentsPage /> },
+          { path: 'docs/standards-exceptions', element: <ExceptionsLog mode="standards" /> },
+          { path: 'docs/contract-exceptions', element: <ExceptionsLog mode="contract" /> },
+          { path: 'docs/rfc', element: <ExceptionsLog mode="rfc" /> },
+          { path: 'docs/change-log', element: <ExceptionsLog mode="change" /> },
+          { path: 'docs/ssl-tracker', element: <TrackersPage mode="ssl" /> },
+          { path: 'docs/domain-tracker', element: <TrackersPage mode="domain" /> },
+          { path: 'docs/networks', element: <NetworksAndMfaPage mode="networks" /> },
+          { path: 'docs/mfa', element: <NetworksAndMfaPage mode="mfa" /> },
+          { path: 'docs/known-issues', element: <NetworksAndMfaPage mode="known-issues" /> },
+          { path: 'docs/maintenance-windows', element: <NetworksAndMfaPage mode="maintenance" /> },
+          
           { path: '*', element: <ComingSoon /> },
         ],
       },
