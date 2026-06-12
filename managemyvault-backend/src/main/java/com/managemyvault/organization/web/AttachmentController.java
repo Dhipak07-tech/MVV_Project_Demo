@@ -66,17 +66,34 @@ public class AttachmentController {
         if (!orgAccessControl.canAccess(attachment.getOrganizationId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
+        
+        // Enforce role permission matrix:
+        // Allowed: ULTRA_SUPER_ADMIN, SUPER_ADMIN, ORG_ADMIN
+        // Restricted: ORG_MEMBER or any other role
+        boolean isAllowedRole = "ULTRA_SUPER_ADMIN".equals(currentUser.getRole()) 
+                || "SUPER_ADMIN".equals(currentUser.getRole()) 
+                || "ORG_ADMIN".equals(currentUser.getRole());
+        
+        if (!isAllowedRole) {
+            // ORG_MEMBER can only delete if: Uploaded By = Current User
+            if (attachment.getCreatedBy() == null || !attachment.getCreatedBy().equals(currentUser.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+
         attachmentService.deleteAttachment(id, currentUser.getId());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/download")
-    public ResponseEntity<InputStreamResource> download(@PathVariable("id") UUID id) {
+    public ResponseEntity<InputStreamResource> download(
+            @PathVariable("id") UUID id,
+            @CurrentUser UserPrincipal currentUser) {
         Attachment attachment = attachmentService.getAttachmentById(id);
         if (!orgAccessControl.canAccess(attachment.getOrganizationId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        InputStream is = attachmentService.downloadAttachmentContent(id);
+        InputStream is = attachmentService.downloadAttachmentContent(id, currentUser.getId());
         String encodedFilename = URLEncoder.encode(attachment.getFileName(), StandardCharsets.UTF_8)
                 .replace("+", "%20");
         return ResponseEntity.ok()

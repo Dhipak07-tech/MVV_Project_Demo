@@ -4,6 +4,7 @@ import com.managemyvault.common.domain.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.UUID;
 
 @Entity
@@ -21,6 +22,7 @@ public class Location extends AuditableEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id", nullable = false)
+    @JsonIgnore
     private Organization organization;
 
     @Column(nullable = false)
@@ -41,6 +43,22 @@ public class Location extends AuditableEntity {
     @Column(length = 255)
     private String country;
 
+    private String state;
+    private String zip;
+    private String phone;
+    private String timezone;
+
+    @Column(name = "primary_location", nullable = false)
+    private Boolean primaryLocation;
+
     @Version
     private Long version;
+
+    @PrePersist
+    @PreUpdate
+    public void defaults() {
+        if (primaryLocation == null) {
+            primaryLocation = false;
+        }
+    }
 }

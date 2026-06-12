@@ -10,16 +10,16 @@ export default {
       colors: {
         // Background tiers
         vault: {
-          base: 'var(--color-vault-base)',
-          surface: 'var(--color-vault-surface)',
-          card: 'var(--color-vault-card)',
-          elevated: 'var(--color-vault-elevated)',
+          base: 'rgb(var(--color-vault-base) / <alpha-value>)',
+          surface: 'rgb(var(--color-vault-surface) / <alpha-value>)',
+          card: 'rgb(var(--color-vault-card) / <alpha-value>)',
+          elevated: 'rgb(var(--color-vault-elevated) / <alpha-value>)',
         },
         // Border tiers
         border: {
-          subtle: 'var(--color-border-subtle)',
-          default: 'var(--color-border-default)',
-          accent: 'var(--color-border-accent)',
+          subtle: 'rgb(var(--color-border-subtle) / <alpha-value>)',
+          default: 'rgb(var(--color-border-default) / <alpha-value>)',
+          accent: 'rgb(var(--color-border-accent) / <alpha-value>)',
         },
         // Brand
         brand: {
@@ -38,10 +38,10 @@ export default {
         },
         // Text
         text: {
-          primary: 'var(--color-text-primary)',
-          secondary: 'var(--color-text-secondary)',
-          muted: 'var(--color-text-muted)',
-          disabled: 'var(--color-text-disabled)',
+          primary: 'rgb(var(--color-text-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--color-text-muted) / <alpha-value>)',
+          disabled: 'rgb(var(--color-text-disabled) / <alpha-value>)',
         },
       },
       fontFamily: {

@@ -7,6 +7,8 @@ import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,25 @@ public class AttachmentService {
     private final MinioClient minioClient;
     private final String minioBucketName;
     private final ActivityEventService activityEventService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    private String resolveUserName(UUID userId) {
+        if (userId == null) return "System";
+        try {
+            Object fullName = entityManager.createNativeQuery(
+                    "SELECT full_name FROM platform_users WHERE id = :userId UNION ALL SELECT full_name FROM organization_members WHERE id = :userId")
+                    .setParameter("userId", userId)
+                    .getSingleResult();
+            if (fullName != null) {
+                return fullName.toString();
+            }
+        } catch (Exception e) {
+            // ignore and fallback
+        }
+        return "Unknown User";
+    }
 
     @Transactional
     public Attachment uploadAttachment(UUID orgId, String entityType, UUID entityId, MultipartFile file, UUID userId) {
@@ -64,21 +85,26 @@ public class AttachmentService {
         attachment.setCreatedBy(userId);
 
         Attachment saved = attachmentRepository.save(attachment);
+        saved.setCreatedByUserName(resolveUserName(userId));
 
-        activityEventService.logEvent(orgId, entityType, entityId, "ATTACHMENT_UPLOAD", userId);
+        activityEventService.logEvent(orgId, entityType, entityId, "ATTACHMENT_UPLOAD", userId, "Uploaded " + originalFileName);
 
         return saved;
     }
 
     @Transactional(readOnly = true)
     public List<Attachment> getAttachmentsForEntity(String entityType, UUID entityId) {
-        return attachmentRepository.findByEntityTypeAndEntityId(entityType, entityId);
+        List<Attachment> list = attachmentRepository.findByEntityTypeAndEntityId(entityType, entityId);
+        list.forEach(a -> a.setCreatedByUserName(resolveUserName(a.getCreatedBy())));
+        return list;
     }
 
     @Transactional(readOnly = true)
     public Attachment getAttachmentById(UUID id) {
-        return attachmentRepository.findById(id)
+        Attachment a = attachmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Attachment", id.toString()));
+        a.setCreatedByUserName(resolveUserName(a.getCreatedBy()));
+        return a;
     }
 
     @Transactional
@@ -94,17 +120,23 @@ public class AttachmentService {
             );
             log.info("Deleted attachment file from MinIO object key: {}", attachment.getObjectKey());
         } catch (Exception e) {
-            log.warn("Failed to delete object from MinIO key: {}. Maybe already deleted? {}", 
-                    attachment.getObjectKey(), e.getMessage());
+            log.error("Failed to delete object from MinIO key: {}", attachment.getObjectKey(), e);
+            throw new RuntimeException("MinIO deletion failed, transaction rolled back: " + e.getMessage(), e);
         }
 
         attachmentRepository.delete(attachment);
         activityEventService.logEvent(attachment.getOrganizationId(), 
-                attachment.getEntityType(), attachment.getEntityId(), "ATTACHMENT_DELETE", userId);
+                attachment.getEntityType(), attachment.getEntityId(), "ATTACHMENT_DELETE", userId, "Deleted " + attachment.getFileName());
     }
 
-    public InputStream downloadAttachmentContent(UUID id) {
+    @Transactional
+    public InputStream downloadAttachmentContent(UUID id, UUID userId) {
         Attachment attachment = getAttachmentById(id);
+        
+        // Log ATTACHMENT_DOWNLOAD event
+        activityEventService.logEvent(attachment.getOrganizationId(), 
+                attachment.getEntityType(), attachment.getEntityId(), "ATTACHMENT_DOWNLOAD", userId, "Downloaded " + attachment.getFileName());
+        
         try {
             return minioClient.getObject(
                     GetObjectArgs.builder()

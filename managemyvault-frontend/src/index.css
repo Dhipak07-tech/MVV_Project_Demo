@@ -10,39 +10,40 @@
 
 :root {
   /* Light theme variables */
-  --color-vault-base: #F8FAFC;
-  --color-vault-surface: #FFFFFF;
-  --color-vault-card: #FFFFFF;
-  --color-vault-elevated: #F1F5F9;
+  --color-vault-base: 248 250 252;
+  --color-vault-surface: 255 255 255;
+  --color-vault-card: 255 255 255;
+  --color-vault-elevated: 241 245 249;
 
-  --color-border-subtle: #E2E8F0;
-  --color-border-default: #CBD5E1;
-  --color-border-accent: #94A3B8;
+  --color-border-subtle: 226 232 240;
+  --color-border-default: 203 213 225;
+  --color-border-accent: 148 163 184;
 
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748B;
-  --color-text-disabled: #94A3B8;
+  --color-text-primary: 15 23 42;
+  --color-text-secondary: 71 85 105;
+  --color-text-muted: 100 116 139;
+  --color-text-disabled: 148 163 184;
   --color-glass-panel-bg: rgba(255, 255, 255, 0.85);
 }
 
 .dark {
   /* Dark theme variables */
-  --color-vault-base: #0A0E1A;
-  --color-vault-surface: #0F1629;
-  --color-vault-card: #141B35;
-  --color-vault-elevated: #1A2240;
+  --color-vault-base: 10 14 26;
+  --color-vault-surface: 15 22 41;
+  --color-vault-card: 20 27 53;
+  --color-vault-elevated: 26 34 64;
 
-  --color-border-subtle: #1E2D4A;
-  --color-border-default: #2A3F6B;
-  --color-border-accent: #3B5998;
+  --color-border-subtle: 30 45 74;
+  --color-border-default: 42 63 107;
+  --color-border-accent: 59 89 152;
 
-  --color-text-primary: #F0F4FF;
-  --color-text-secondary: #94A3B8;
-  --color-text-muted: #475569;
-  --color-text-disabled: #2D3748;
+  --color-text-primary: 240 244 255;
+  --color-text-secondary: 148 163 184;
+  --color-text-muted: 71 85 105;
+  --color-text-disabled: 45 55 72;
   --color-glass-panel-bg: rgba(20, 27, 53, 0.85);
 }
+
 
 @layer base {
   * {

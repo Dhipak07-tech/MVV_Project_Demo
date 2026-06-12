@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import { Landmark, ShieldAlert, Cpu, Wifi, AlertCircle } from 'lucide-react';
 import { useOrganization } from '../../hooks/useOrganizations';
 import RecordLayout from '../records/RecordLayout';
-import { API_URL } from '../../../../config/constants';
+import { clientContactApi } from '../../api/clientContactApi';
 
 interface OnsiteData {
   organizationId: string;
@@ -34,18 +33,12 @@ export default function OnsiteInfo() {
   const [keyLocations, setKeyLocations] = useState('');
   const [notes, setNotes] = useState('');
 
-  const token = localStorage.getItem('accessToken');
-  const headers = { Authorization: `Bearer ${token}` };
-
   const fetchOnsiteInfo = async () => {
     if (!orgId) return;
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/onsite-information`, {
-        params: { organizationId: orgId },
-        headers
-      });
-      setData(response.data);
+      const result = await clientContactApi.onsite.get(orgId);
+      setData(result);
     } catch (e) {
       console.error('Failed to load onsite information:', e);
     } finally {
@@ -82,8 +75,8 @@ export default function OnsiteInfo() {
     };
 
     try {
-      const response = await axios.post(`${API_URL}/onsite-information`, payload, { headers });
-      setData(response.data);
+      const result = await clientContactApi.onsite.save(payload);
+      setData(result);
       setIsEditing(false);
     } catch (e) {
       console.error('Failed to save onsite info:', e);

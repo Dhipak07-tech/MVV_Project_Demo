@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Clock, Plus, Edit, Trash, Paperclip, RefreshCw } from 'lucide-react';
-import axios from 'axios';
-import { API_URL } from '../../../../config/constants';
+import { Clock, Plus, Edit, Trash, Paperclip, RefreshCw, Download } from 'lucide-react';
+import { clientContactApi } from '../../api/clientContactApi';
 
 interface ActivityEvent {
   id: string;
   action: string;
   userId: string;
+  userName?: string;
+  details?: string;
   timestamp: string;
 }
 
@@ -24,20 +25,15 @@ export default function ActivityTimelineWidget({
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const token = localStorage.getItem('accessToken');
-  const headers = { Authorization: `Bearer ${token}` };
-
   const fetchEvents = async () => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId)) {
+      setEvents([]);
+      return;
+    }
     setIsLoading(true);
     try {
-      const response = await axios.get(
-        `${API_URL}/activity/${entityType}/${entityId}`,
-        {
-          params: { organizationId },
-          headers
-        }
-      );
-      setEvents(response.data);
+      const data = await clientContactApi.activities.list(entityType, entityId, organizationId);
+      setEvents(data);
     } catch (error) {
       console.error('Failed to fetch activity log:', error);
     } finally {
@@ -47,19 +43,30 @@ export default function ActivityTimelineWidget({
 
   useEffect(() => {
     fetchEvents();
+    const handleUpdate = () => {
+      fetchEvents();
+    };
+    window.addEventListener('activity-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('activity-updated', handleUpdate);
+    };
   }, [entityId, entityType, organizationId]);
 
   const getActionIcon = (action: string) => {
     switch (action) {
       case 'CREATE':
+      case 'RELATIONSHIP_CREATE':
         return <Plus className="w-3.5 h-3.5 text-status-success" />;
       case 'UPDATE':
         return <Edit className="w-3.5 h-3.5 text-brand-secondary" />;
       case 'DELETE':
       case 'ATTACHMENT_DELETE':
+      case 'RELATIONSHIP_DELETE':
         return <Trash className="w-3.5 h-3.5 text-status-danger" />;
       case 'ATTACHMENT_UPLOAD':
         return <Paperclip className="w-3.5 h-3.5 text-brand-primary" />;
+      case 'ATTACHMENT_DOWNLOAD':
+        return <Download className="w-3.5 h-3.5 text-brand-primary" />;
       default:
         return <Clock className="w-3.5 h-3.5 text-text-muted" />;
     }
@@ -75,8 +82,14 @@ export default function ActivityTimelineWidget({
         return 'deleted this record';
       case 'ATTACHMENT_UPLOAD':
         return 'uploaded an attachment';
+      case 'ATTACHMENT_DOWNLOAD':
+        return 'downloaded an attachment';
       case 'ATTACHMENT_DELETE':
         return 'removed an attachment';
+      case 'RELATIONSHIP_CREATE':
+        return 'linked a related item';
+      case 'RELATIONSHIP_DELETE':
+        return 'unlinked a related item';
       default:
         return action.toLowerCase().replace('_', ' ');
     }
@@ -107,8 +120,13 @@ export default function ActivityTimelineWidget({
             </span>
             <div className="pl-1.5">
               <p className="font-semibold text-text-primary">
-                System User <span className="font-normal text-text-secondary">{getActionText(e.action)}</span>
+                {e.userName || 'System User'} <span className="font-normal text-text-secondary">{getActionText(e.action)}</span>
               </p>
+              {e.details && (
+                <p className="text-[10px] text-brand-secondary font-mono mt-0.5 bg-vault-base/20 px-1.5 py-0.5 rounded border border-border-subtle/50 inline-block">
+                  {e.details}
+                </p>
+              )}
               <p className="text-[10px] text-text-muted mt-0.5">
                 {new Date(e.timestamp).toLocaleString()}
               </p>

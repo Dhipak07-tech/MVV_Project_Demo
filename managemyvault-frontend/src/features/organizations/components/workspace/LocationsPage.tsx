@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, MapPin, Edit2, Trash2, Landmark, X } from 'lucide-react';
+import { clientContactApi } from '../../api/clientContactApi';
+import { Plus, Search, MapPin, Edit2, Trash2, Landmark, X, Phone } from 'lucide-react';
 
 interface LocationItem {
   id: string;
@@ -10,21 +11,20 @@ interface LocationItem {
   city: string;
   state: string;
   zip: string;
+  country: string;
   type: 'HQ' | 'Branch' | 'Data Center' | 'Remote';
-  status: 'Active' | 'Inactive';
+  phone: string;
+  timezone: string;
+  primaryLocation: boolean;
   notes: string;
 }
-
-const DEFAULT_LOCATIONS: LocationItem[] = [
-  { id: '1', name: 'Cyberdyne Headquarters', address: '18144 El Camino Real', city: 'Sunnyvale', state: 'CA', zip: '94087', type: 'HQ', status: 'Active', notes: 'Main executive office and development laboratories.' },
-  { id: '2', name: 'Primary Data Center', address: '2211 N 1st St', city: 'San Jose', state: 'CA', zip: '95131', type: 'Data Center', status: 'Active', notes: 'Secured server room holding core system configurations.' },
-];
 
 export default function LocationsPage() {
   const { orgId } = useParams<{ orgId: string }>();
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('All');
+  const [isLoading, setIsLoading] = useState(true);
   
   // Modal State
   const [isOpen, setIsOpen] = useState(false);
@@ -37,27 +37,30 @@ export default function LocationsPage() {
     city: '',
     state: '',
     zip: '',
+    country: '',
     type: 'Branch' as LocationItem['type'],
-    status: 'Active' as LocationItem['status'],
+    phone: '',
+    timezone: '',
+    primaryLocation: false,
     notes: '',
   });
 
-  // Load from local storage
-  useEffect(() => {
-    const stored = localStorage.getItem(`mmv_locations_${orgId}`);
-    if (stored) {
-      setLocations(JSON.parse(stored));
-    } else {
-      setLocations(DEFAULT_LOCATIONS);
-      localStorage.setItem(`mmv_locations_${orgId}`, JSON.stringify(DEFAULT_LOCATIONS));
+  const fetchLocations = async () => {
+    if (!orgId) return;
+    setIsLoading(true);
+    try {
+      const data = await clientContactApi.locations.list(orgId);
+      setLocations(data);
+    } catch (e) {
+      console.error('Failed to load locations:', e);
+    } finally {
+      setIsLoading(false);
     }
-  }, [orgId]);
-
-  // Save helper
-  const saveLocations = (updated: LocationItem[]) => {
-    setLocations(updated);
-    localStorage.setItem(`mmv_locations_${orgId}`, JSON.stringify(updated));
   };
+
+  useEffect(() => {
+    fetchLocations();
+  }, [orgId]);
 
   const handleOpenAdd = () => {
     setEditingLoc(null);
@@ -67,8 +70,11 @@ export default function LocationsPage() {
       city: '',
       state: '',
       zip: '',
+      country: '',
       type: 'Branch',
-      status: 'Active',
+      phone: '',
+      timezone: '',
+      primaryLocation: false,
       notes: '',
     });
     setIsOpen(true);
@@ -77,53 +83,71 @@ export default function LocationsPage() {
   const handleOpenEdit = (loc: LocationItem) => {
     setEditingLoc(loc);
     setForm({
-      name: loc.name,
-      address: loc.address,
-      city: loc.city,
-      state: loc.state,
-      zip: loc.zip,
-      type: loc.type,
-      status: loc.status,
-      notes: loc.notes,
+      name: loc.name || '',
+      address: loc.address || '',
+      city: loc.city || '',
+      state: loc.state || '',
+      zip: loc.zip || '',
+      country: loc.country || '',
+      type: loc.type || 'Branch',
+      phone: loc.phone || '',
+      timezone: loc.timezone || '',
+      primaryLocation: !!loc.primaryLocation,
+      notes: loc.notes || '',
     });
     setIsOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.address) return;
 
-    if (editingLoc) {
-      const updated = locations.map((l) =>
-        l.id === editingLoc.id ? { ...l, ...form } : l
-      );
-      saveLocations(updated);
-    } else {
-      const newLoc: LocationItem = {
-        id: crypto.randomUUID(),
-        ...form,
-      };
-      saveLocations([...locations, newLoc]);
+    try {
+      if (editingLoc) {
+        const data = await clientContactApi.locations.update(editingLoc.id, form);
+        setLocations(locations.map((l) => l.id === editingLoc.id ? data : l));
+      } else {
+        if (!orgId) return;
+        const data = await clientContactApi.locations.create(orgId, form);
+        setLocations([...locations, data]);
+      }
+      setIsOpen(false);
+    } catch (e) {
+      console.error('Failed to save location:', e);
+      alert('Failed to save location.');
     }
-    setIsOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this location?')) {
-      const updated = locations.filter((l) => l.id !== id);
-      saveLocations(updated);
+      try {
+        await clientContactApi.locations.delete(id);
+        setLocations(locations.filter((l) => l.id !== id));
+      } catch (e) {
+        console.error('Failed to delete location:', e);
+        alert('Failed to delete location.');
+      }
     }
   };
 
   // Filter
   const filteredLocs = locations.filter((l) => {
     const matchesSearch =
-      l.name.toLowerCase().includes(search.toLowerCase()) ||
-      l.address.toLowerCase().includes(search.toLowerCase()) ||
-      l.city.toLowerCase().includes(search.toLowerCase());
+      (l.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (l.address || '').toLowerCase().includes(search.toLowerCase()) ||
+      (l.city || '').toLowerCase().includes(search.toLowerCase());
     const matchesType = filterType === 'All' || l.type === filterType;
     return matchesSearch && matchesType;
   });
+
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-6">
+        <div className="h-8 w-64 bg-vault-elevated animate-pulse rounded-lg" />
+        <div className="h-60 bg-vault-elevated animate-pulse rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -194,7 +218,12 @@ export default function LocationsPage() {
                     {loc.type === 'HQ' ? <Landmark className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-text-primary">{loc.name}</h3>
+                    <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
+                      {loc.name}
+                      {loc.primaryLocation && (
+                        <span className="badge badge-success text-[9px] lowercase">primary</span>
+                      )}
+                    </h3>
                     <p className="text-xs text-text-muted">{loc.address}</p>
                   </div>
                 </div>
@@ -222,17 +251,25 @@ export default function LocationsPage() {
                 }`}>
                   {loc.type}
                 </span>
-                <span className={`badge text-[10px] font-semibold uppercase ${
-                  loc.status === 'Active' ? 'badge-success' : 'badge-danger'
-                }`}>
-                  {loc.status}
-                </span>
+                {loc.timezone && (
+                  <span className="badge badge-info text-[10px] font-semibold">
+                    {loc.timezone}
+                  </span>
+                )}
               </div>
 
               {/* Address detail */}
               <p className="mt-4 text-xs text-text-secondary">
-                {loc.city}, {loc.state} {loc.zip}
+                {loc.city && `${loc.city}, `}{loc.state && `${loc.state} `}{loc.zip && `${loc.zip} `}{loc.country && `(${loc.country})`}
               </p>
+
+              {/* Phone */}
+              {loc.phone && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs text-text-secondary">
+                  <Phone className="w-3.5 h-3.5 text-text-muted" />
+                  <a href={`tel:${loc.phone}`} className="hover:underline">{loc.phone}</a>
+                </div>
+              )}
             </div>
 
             {loc.notes && (
@@ -331,6 +368,42 @@ export default function LocationsPage() {
                     />
                   </div>
                   <div>
+                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Country</label>
+                    <input
+                      type="text"
+                      value={form.country}
+                      onChange={(e) => setForm({ ...form, country: e.target.value })}
+                      className="input-field"
+                      placeholder="USA"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Phone</label>
+                    <input
+                      type="text"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className="input-field"
+                      placeholder="+1 (555) 0011"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Timezone</label>
+                    <input
+                      type="text"
+                      value={form.timezone}
+                      onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                      className="input-field"
+                      placeholder="EST / UTC-5"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Type</label>
                     <select
                       value={form.type}
@@ -343,18 +416,17 @@ export default function LocationsPage() {
                       <option value="Remote">Remote</option>
                     </select>
                   </div>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as LocationItem['status'] })}
-                    className="input-field"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                  <div className="flex flex-col justify-end pb-1">
+                    <label className="flex items-center gap-2 cursor-pointer p-2.5 rounded bg-vault-elevated/40 hover:bg-vault-elevated transition-colors border border-border-subtle">
+                      <input
+                        type="checkbox"
+                        checked={form.primaryLocation}
+                        onChange={(e) => setForm({ ...form, primaryLocation: e.target.checked })}
+                        className="rounded border-border-default bg-vault-base text-brand-primary focus:ring-brand-primary"
+                      />
+                      <span className="text-[10px] font-semibold text-text-secondary">Primary Site</span>
+                    </label>
+                  </div>
                 </div>
 
                 <div>

@@ -184,7 +184,7 @@ export default function CommandPalette() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.98 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="fixed inset-x-4 top-[10%] mx-auto max-w-2xl bg-vault-surface/90 border border-border-default/60 rounded-2xl shadow-2xl overflow-hidden z-50 backdrop-blur-xl flex flex-col max-h-[60vh] md:max-h-[70vh]"
+            className="fixed inset-x-4 top-[10%] mx-auto max-w-2xl bg-vault-surface dark:bg-vault-surface/95 border border-border-default dark:border-border-default/60 rounded-2xl shadow-2xl overflow-hidden z-50 backdrop-blur-xl flex flex-col max-h-[60vh] md:max-h-[70vh]"
           >
             {/* Search Input Bar */}
             <div className="flex items-center px-4 py-3 border-b border-border-subtle gap-3">

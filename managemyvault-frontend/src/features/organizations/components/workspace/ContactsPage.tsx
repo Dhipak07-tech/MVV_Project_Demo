@@ -1,73 +1,85 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, User, Edit2, Trash2, Mail, Phone, X, UserCheck } from 'lucide-react';
+import { clientContactApi } from '../../api/clientContactApi';
+import { Plus, Search, User, Edit2, Trash2, Mail, Phone, X, UserCheck, Shield } from 'lucide-react';
 
 interface Contact {
   id: string;
+  firstName: string;
+  lastName: string;
   name: string;
-  title: string;
+  role: string;
   email: string;
   phone: string;
-  type: 'Primary' | 'Billing' | 'Technical' | 'General';
-  status: 'Active' | 'Inactive';
+  mobile: string;
+  department: string;
+  primaryContact: boolean;
+  emergencyContact: boolean;
+  authorizationContact: boolean;
   notes: string;
+  isActive: boolean;
 }
-
-const DEFAULT_CONTACTS: Contact[] = [
-  { id: '1', name: 'John Connor', title: 'IT Director', email: 'john.connor@cyberdyne.com', phone: '+1 (555) 0199', type: 'Primary', status: 'Active', notes: 'Key contact for Skynet firewall authorization.' },
-  { id: '2', name: 'Sarah Connor', title: 'Security Architect', email: 'sarah.connor@cyberdyne.com', phone: '+1 (555) 0180', type: 'Technical', status: 'Active', notes: 'Handles local office security fobs.' },
-  { id: '3', name: 'Miles Dyson', title: 'Lead Developer', email: 'miles.dyson@cyberdyne.com', phone: '+1 (555) 0150', type: 'Technical', status: 'Active', notes: 'Server room physical key holder.' },
-];
 
 export default function ContactsPage() {
   const { orgId } = useParams<{ orgId: string }>();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('All');
-  
+  const [isLoading, setIsLoading] = useState(true);
+
   // Modal State
   const [isOpen, setIsOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
   // Form State
   const [form, setForm] = useState({
-    name: '',
-    title: '',
+    firstName: '',
+    lastName: '',
+    role: '',
     email: '',
     phone: '',
-    type: 'General' as Contact['type'],
-    status: 'Active' as Contact['status'],
+    mobile: '',
+    department: '',
+    primaryContact: false,
+    emergencyContact: false,
+    authorizationContact: false,
     notes: '',
+    isActive: true,
   });
 
-  // Load from local storage
-  useEffect(() => {
-    const stored = localStorage.getItem(`mmv_contacts_${orgId}`);
-    if (stored) {
-      setContacts(JSON.parse(stored));
-    } else {
-      setContacts(DEFAULT_CONTACTS);
-      localStorage.setItem(`mmv_contacts_${orgId}`, JSON.stringify(DEFAULT_CONTACTS));
+  const fetchContacts = async () => {
+    if (!orgId) return;
+    setIsLoading(true);
+    try {
+      const data = await clientContactApi.contacts.list(orgId);
+      setContacts(data);
+    } catch (e) {
+      console.error('Failed to load contacts:', e);
+    } finally {
+      setIsLoading(false);
     }
-  }, [orgId]);
-
-  // Save to local storage helper
-  const saveContacts = (updated: Contact[]) => {
-    setContacts(updated);
-    localStorage.setItem(`mmv_contacts_${orgId}`, JSON.stringify(updated));
   };
+
+  useEffect(() => {
+    fetchContacts();
+  }, [orgId]);
 
   const handleOpenAdd = () => {
     setEditingContact(null);
     setForm({
-      name: '',
-      title: '',
+      firstName: '',
+      lastName: '',
+      role: '',
       email: '',
       phone: '',
-      type: 'General',
-      status: 'Active',
+      mobile: '',
+      department: '',
+      primaryContact: false,
+      emergencyContact: false,
+      authorizationContact: false,
       notes: '',
+      isActive: true,
     });
     setIsOpen(true);
   };
@@ -75,54 +87,80 @@ export default function ContactsPage() {
   const handleOpenEdit = (contact: Contact) => {
     setEditingContact(contact);
     setForm({
-      name: contact.name,
-      title: contact.title,
-      email: contact.email,
-      phone: contact.phone,
-      type: contact.type,
-      status: contact.status,
-      notes: contact.notes,
+      firstName: contact.firstName || '',
+      lastName: contact.lastName || '',
+      role: contact.role || '',
+      email: contact.email || '',
+      phone: contact.phone || '',
+      mobile: contact.mobile || '',
+      department: contact.department || '',
+      primaryContact: !!contact.primaryContact,
+      emergencyContact: !!contact.emergencyContact,
+      authorizationContact: !!contact.authorizationContact,
+      notes: contact.notes || '',
+      isActive: contact.isActive !== false,
     });
     setIsOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email) return;
+    if (!form.firstName || !form.lastName || !form.email) return;
 
-    if (editingContact) {
-      // Edit mode
-      const updated = contacts.map((c) =>
-        c.id === editingContact.id ? { ...c, ...form } : c
-      );
-      saveContacts(updated);
-    } else {
-      // Add mode
-      const newContact: Contact = {
-        id: crypto.randomUUID(),
-        ...form,
-      };
-      saveContacts([...contacts, newContact]);
+    try {
+      if (editingContact) {
+        // Edit mode
+        const data = await clientContactApi.contacts.update(editingContact.id, form);
+        setContacts(contacts.map(c => c.id === editingContact.id ? data : c));
+      } else {
+        // Add mode
+        if (!orgId) return;
+        const data = await clientContactApi.contacts.create(orgId, form);
+        setContacts([...contacts, data]);
+      }
+      setIsOpen(false);
+    } catch (e) {
+      console.error('Failed to save contact:', e);
+      alert('Failed to save contact.');
     }
-    setIsOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this contact?')) {
-      const updated = contacts.filter((c) => c.id !== id);
-      saveContacts(updated);
+      try {
+        await clientContactApi.contacts.delete(id);
+        setContacts(contacts.filter((c) => c.id !== id));
+      } catch (e) {
+        console.error('Failed to delete contact:', e);
+        alert('Failed to delete contact.');
+      }
     }
   };
 
   // Filters
   const filteredContacts = contacts.filter((c) => {
+    const fullName = `${c.firstName || ''} ${c.lastName || ''}`.toLowerCase();
     const matchesSearch =
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase());
-    const matchesType = filterType === 'All' || c.type === filterType;
-    return matchesSearch && matchesType;
+      fullName.includes(search.toLowerCase()) ||
+      (c.role || '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.email || '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.department || '').toLowerCase().includes(search.toLowerCase());
+
+    if (filterType === 'All') return matchesSearch;
+    if (filterType === 'Primary') return matchesSearch && c.primaryContact;
+    if (filterType === 'Emergency') return matchesSearch && c.emergencyContact;
+    if (filterType === 'Authorization') return matchesSearch && c.authorizationContact;
+    return matchesSearch;
   });
+
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-6">
+        <div className="h-8 w-64 bg-vault-elevated animate-pulse rounded-lg" />
+        <div className="h-60 bg-vault-elevated animate-pulse rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -136,7 +174,7 @@ export default function ContactsPage() {
             Contacts Directory
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Manage organization-scoped personnel, titles, and emergency roles.
+            Manage organization-scoped personnel, roles, and authorization levels.
           </p>
         </div>
 
@@ -152,14 +190,14 @@ export default function ContactsPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <input
             type="text"
-            placeholder="Search contacts by name, email, or role..."
+            placeholder="Search contacts by name, email, or department..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input-field pl-10"
           />
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          {['All', 'Primary', 'Billing', 'Technical', 'General'].map((type) => (
+          {['All', 'Primary', 'Emergency', 'Authorization'].map((type) => (
             <button
               key={type}
               onClick={() => setFilterType(type)}
@@ -194,14 +232,14 @@ export default function ContactsPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
-                      {contact.name}
-                      {contact.type === 'Primary' && (
+                      {contact.firstName} {contact.lastName}
+                      {contact.primaryContact && (
                         <span title="Primary Contact">
                           <UserCheck className="w-4 h-4 text-amber-500" />
                         </span>
                       )}
                     </h3>
-                    <p className="text-xs text-text-muted">{contact.title}</p>
+                    <p className="text-xs text-text-muted">{contact.role || 'No RoleSpecified'}</p>
                   </div>
                 </div>
 
@@ -222,16 +260,31 @@ export default function ContactsPage() {
               </div>
 
               {/* Badges */}
-              <div className="flex gap-2 mt-4">
+              <div className="flex flex-wrap gap-2 mt-4">
+                {contact.department && (
+                  <span className="badge text-[10px] font-semibold uppercase badge-info">
+                    {contact.department}
+                  </span>
+                )}
+                {contact.primaryContact && (
+                  <span className="badge text-[10px] font-semibold uppercase badge-success">
+                    Primary
+                  </span>
+                )}
+                {contact.emergencyContact && (
+                  <span className="badge text-[10px] font-semibold uppercase badge-warning">
+                    Emergency
+                  </span>
+                )}
+                {contact.authorizationContact && (
+                  <span className="badge text-[10px] font-semibold uppercase badge-danger">
+                    Auth
+                  </span>
+                )}
                 <span className={`badge text-[10px] font-semibold uppercase ${
-                  contact.type === 'Primary' ? 'badge-success' : contact.type === 'Billing' ? 'badge-warning' : 'badge-info'
+                  contact.isActive ? 'badge-success' : 'badge-danger'
                 }`}>
-                  {contact.type}
-                </span>
-                <span className={`badge text-[10px] font-semibold uppercase ${
-                  contact.status === 'Active' ? 'badge-success' : 'badge-danger'
-                }`}>
-                  {contact.status}
+                  {contact.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
 
@@ -241,10 +294,18 @@ export default function ContactsPage() {
                   <Mail className="w-4 h-4 text-text-muted" />
                   <a href={`mailto:${contact.email}`} className="hover:underline">{contact.email}</a>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-text-muted" />
-                  <a href={`tel:${contact.phone}`} className="hover:underline">{contact.phone}</a>
-                </div>
+                {contact.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-text-muted" />
+                    <a href={`tel:${contact.phone}`} className="hover:underline">{contact.phone}</a>
+                  </div>
+                )}
+                {contact.mobile && (
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-text-muted" />
+                    <span>Mobile: {contact.mobile}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -285,27 +346,53 @@ export default function ContactsPage() {
               </h2>
 
               <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="input-field"
-                    placeholder="e.g. John Connor"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">First Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={form.firstName}
+                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                      className="input-field"
+                      placeholder="e.g. John"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Last Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={form.lastName}
+                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                      className="input-field"
+                      placeholder="e.g. Connor"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Job Title</label>
-                  <input
-                    type="text"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className="input-field"
-                    placeholder="e.g. System Administrator"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Job Title / Role</label>
+                    <input
+                      type="text"
+                      required
+                      value={form.role}
+                      onChange={(e) => setForm({ ...form, role: e.target.value })}
+                      className="input-field"
+                      placeholder="e.g. IT Director"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Department</label>
+                    <input
+                      type="text"
+                      value={form.department}
+                      onChange={(e) => setForm({ ...form, department: e.target.value })}
+                      className="input-field"
+                      placeholder="e.g. Operations"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -334,28 +421,59 @@ export default function ContactsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Type</label>
-                    <select
-                      value={form.type}
-                      onChange={(e) => setForm({ ...form, type: e.target.value as Contact['type'] })}
+                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Mobile</label>
+                    <input
+                      type="text"
+                      value={form.mobile}
+                      onChange={(e) => setForm({ ...form, mobile: e.target.value })}
                       className="input-field"
-                    >
-                      <option value="Primary">Primary</option>
-                      <option value="Billing">Billing</option>
-                      <option value="Technical">Technical</option>
-                      <option value="General">General</option>
-                    </select>
+                      placeholder="+1 (555) 0123"
+                    />
                   </div>
                   <div>
                     <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Status</label>
                     <select
-                      value={form.status}
-                      onChange={(e) => setForm({ ...form, status: e.target.value as Contact['status'] })}
+                      value={form.isActive ? 'Active' : 'Inactive'}
+                      onChange={(e) => setForm({ ...form, isActive: e.target.value === 'Active' })}
                       className="input-field"
                     >
                       <option value="Active">Active</option>
                       <option value="Inactive">Inactive</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* Verification/Auth Flags */}
+                <div className="space-y-2 pt-2 border-t border-border-subtle">
+                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Access & Roles</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded bg-vault-elevated/40 hover:bg-vault-elevated transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={form.primaryContact}
+                        onChange={(e) => setForm({ ...form, primaryContact: e.target.checked })}
+                        className="rounded border-border-default bg-vault-base text-brand-primary focus:ring-brand-primary"
+                      />
+                      <span className="text-[10px] font-semibold text-text-secondary">Primary</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded bg-vault-elevated/40 hover:bg-vault-elevated transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={form.emergencyContact}
+                        onChange={(e) => setForm({ ...form, emergencyContact: e.target.checked })}
+                        className="rounded border-border-default bg-vault-base text-brand-primary focus:ring-brand-primary"
+                      />
+                      <span className="text-[10px] font-semibold text-text-secondary">Emergency</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded bg-vault-elevated/40 hover:bg-vault-elevated transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={form.authorizationContact}
+                        onChange={(e) => setForm({ ...form, authorizationContact: e.target.checked })}
+                        className="rounded border-border-default bg-vault-base text-brand-primary focus:ring-brand-primary"
+                      />
+                      <span className="text-[10px] font-semibold text-text-secondary">Authorized</span>
+                    </label>
                   </div>
                 </div>
 

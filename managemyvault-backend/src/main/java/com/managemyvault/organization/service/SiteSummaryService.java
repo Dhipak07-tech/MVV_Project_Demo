@@ -1,10 +1,12 @@
 package com.managemyvault.organization.service;
 
 import com.managemyvault.common.exception.ResourceNotFoundException;
-import com.managemyvault.organization.domain.Organization;
+import com.managemyvault.organization.domain.Contact;
 import com.managemyvault.organization.domain.SiteSummary;
+import com.managemyvault.organization.repository.ContactRepository;
 import com.managemyvault.organization.repository.OrganizationRepository;
 import com.managemyvault.organization.repository.SiteSummaryRepository;
+import com.managemyvault.organization.web.dto.SiteSummaryRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ public class SiteSummaryService {
 
     private final SiteSummaryRepository siteSummaryRepository;
     private final OrganizationRepository organizationRepository;
+    private final ContactRepository contactRepository;
     private final ActivityEventService activityEventService;
     private final RevisionService revisionService;
 
@@ -27,11 +30,32 @@ public class SiteSummaryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Organization", orgId.toString()));
     }
 
+    private void validateContactOrg(UUID contactId, UUID expectedOrgId) {
+        if (contactId != null) {
+            Contact contact = contactRepository.findById(contactId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Contact", contactId.toString()));
+            if (!contact.getOrganization().getId().equals(expectedOrgId)) {
+                throw new IllegalArgumentException("Contact " + contactId + " does not belong to organization " + expectedOrgId);
+            }
+        }
+    }
+
+    private void validateContacts(SiteSummaryRequest request, UUID orgId) {
+        validateContactOrg(request.getPrimaryContactId(), orgId);
+        validateContactOrg(request.getEmergencyContactId(), orgId);
+        validateContactOrg(request.getAuthorizationContactId(), orgId);
+    }
+
     @Transactional(readOnly = true)
     public SiteSummary getByOrganizationId(UUID organizationId) {
         validateOrganization(organizationId);
         return siteSummaryRepository.findByOrganizationId(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("SiteSummary", "Org ID: " + organizationId));
+    }
+
+    @Transactional(readOnly = true)
+    public SiteSummary getSiteSummary(UUID organizationId) {
+        return getByOrganizationId(organizationId);
     }
 
     @Transactional(readOnly = true)
@@ -53,6 +77,37 @@ public class SiteSummaryService {
         if (siteSummary.getActive() == null) {
             siteSummary.setActive(true);
         }
+        SiteSummary saved = siteSummaryRepository.save(siteSummary);
+
+        activityEventService.logEvent(saved.getOrganizationId(), "SiteSummary", saved.getId(), "CREATE", userId);
+        revisionService.saveRevision("SiteSummary", saved.getId(), null, saved, userId);
+
+        return saved;
+    }
+
+    @Transactional
+    public SiteSummary createSiteSummary(SiteSummaryRequest request, UUID userId) {
+        validateOrganization(request.getOrganizationId());
+        validateContacts(request, request.getOrganizationId());
+
+        // Ensure only one SiteSummary per Organization
+        siteSummaryRepository.findByOrganizationId(request.getOrganizationId()).ifPresent(s -> {
+            throw new IllegalStateException("SiteSummary already exists for organization: " + request.getOrganizationId());
+        });
+
+        SiteSummary siteSummary = SiteSummary.builder()
+                .organizationId(request.getOrganizationId())
+                .title(request.getTitle())
+                .timezone(request.getTimezone())
+                .businessHours(request.getBusinessHours())
+                .notes(request.getNotes())
+                .primaryContactId(request.getPrimaryContactId())
+                .emergencyContactId(request.getEmergencyContactId())
+                .authorizationContactId(request.getAuthorizationContactId())
+                .active(true)
+                .build();
+
+        siteSummary.setCreatedBy(userId);
         SiteSummary saved = siteSummaryRepository.save(siteSummary);
 
         activityEventService.logEvent(saved.getOrganizationId(), "SiteSummary", saved.getId(), "CREATE", userId);
@@ -93,6 +148,81 @@ public class SiteSummaryService {
         existing.setAuthorizationContactId(updateData.getAuthorizationContactId());
         if (updateData.getActive() != null) existing.setActive(updateData.getActive());
 
+        existing.setUpdatedBy(userId);
+        SiteSummary saved = siteSummaryRepository.save(existing);
+
+        activityEventService.logEvent(saved.getOrganizationId(), "SiteSummary", saved.getId(), "UPDATE", userId);
+        revisionService.saveRevision("SiteSummary", saved.getId(), beforeState, saved, userId);
+
+        return saved;
+    }
+
+    @Transactional
+    public SiteSummary updateSiteSummary(UUID id, SiteSummaryRequest request, UUID userId) {
+        SiteSummary existing = siteSummaryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("SiteSummary", id.toString()));
+
+        validateContacts(request, existing.getOrganizationId());
+
+        // Clone/Backup before state for revision history
+        SiteSummary beforeState = SiteSummary.builder()
+                .id(existing.getId())
+                .organizationId(existing.getOrganizationId())
+                .title(existing.getTitle())
+                .timezone(existing.getTimezone())
+                .businessHours(existing.getBusinessHours())
+                .notes(existing.getNotes())
+                .primaryContactId(existing.getPrimaryContactId())
+                .emergencyContactId(existing.getEmergencyContactId())
+                .authorizationContactId(existing.getAuthorizationContactId())
+                .active(existing.getActive())
+                .build();
+        beforeState.setCreatedAt(existing.getCreatedAt());
+        beforeState.setCreatedBy(existing.getCreatedBy());
+        beforeState.setUpdatedAt(existing.getUpdatedAt());
+        beforeState.setUpdatedBy(existing.getUpdatedBy());
+
+        if (request.getTitle() != null) existing.setTitle(request.getTitle());
+        if (request.getTimezone() != null) existing.setTimezone(request.getTimezone());
+        if (request.getBusinessHours() != null) existing.setBusinessHours(request.getBusinessHours());
+        if (request.getNotes() != null) existing.setNotes(request.getNotes());
+        existing.setPrimaryContactId(request.getPrimaryContactId());
+        existing.setEmergencyContactId(request.getEmergencyContactId());
+        existing.setAuthorizationContactId(request.getAuthorizationContactId());
+
+        existing.setUpdatedBy(userId);
+        SiteSummary saved = siteSummaryRepository.save(existing);
+
+        activityEventService.logEvent(saved.getOrganizationId(), "SiteSummary", saved.getId(), "UPDATE", userId);
+        revisionService.saveRevision("SiteSummary", saved.getId(), beforeState, saved, userId);
+
+        return saved;
+    }
+
+    @Transactional
+    public SiteSummary archiveSiteSummary(UUID id, UUID userId) {
+        SiteSummary existing = siteSummaryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("SiteSummary", id.toString()));
+
+        // Clone/Backup before state for revision history
+        SiteSummary beforeState = SiteSummary.builder()
+                .id(existing.getId())
+                .organizationId(existing.getOrganizationId())
+                .title(existing.getTitle())
+                .timezone(existing.getTimezone())
+                .businessHours(existing.getBusinessHours())
+                .notes(existing.getNotes())
+                .primaryContactId(existing.getPrimaryContactId())
+                .emergencyContactId(existing.getEmergencyContactId())
+                .authorizationContactId(existing.getAuthorizationContactId())
+                .active(existing.getActive())
+                .build();
+        beforeState.setCreatedAt(existing.getCreatedAt());
+        beforeState.setCreatedBy(existing.getCreatedBy());
+        beforeState.setUpdatedAt(existing.getUpdatedAt());
+        beforeState.setUpdatedBy(existing.getUpdatedBy());
+
+        existing.setActive(false);
         existing.setUpdatedBy(userId);
         SiteSummary saved = siteSummaryRepository.save(existing);
 

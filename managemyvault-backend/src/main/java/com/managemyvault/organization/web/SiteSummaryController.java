@@ -5,6 +5,7 @@ import com.managemyvault.common.security.OrgAccessControl;
 import com.managemyvault.common.security.UserPrincipal;
 import com.managemyvault.organization.domain.SiteSummary;
 import com.managemyvault.organization.service.SiteSummaryService;
+import com.managemyvault.organization.web.dto.SiteSummaryRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,7 @@ public class SiteSummaryController {
     private final SiteSummaryService siteSummaryService;
     private final OrgAccessControl orgAccessControl;
 
-    @GetMapping("/api/v1/organizations/{organizationId}/site-summary")
+    @GetMapping({"/api/v1/organizations/{organizationId}/site-summary", "/api/v1/site-summary/{organizationId}"})
     @PreAuthorize("@orgAccessControl.canAccess(#organizationId)")
     public ResponseEntity<SiteSummary> getSiteSummary(@PathVariable("organizationId") UUID organizationId) {
         try {
@@ -35,30 +36,41 @@ public class SiteSummaryController {
         }
     }
 
-    @PostMapping("/api/v1/site-summaries")
+    @PostMapping({"/api/v1/site-summaries", "/api/v1/site-summary"})
     public ResponseEntity<SiteSummary> createSiteSummary(
-            @RequestBody @Valid SiteSummary siteSummary,
+            @RequestBody @Valid SiteSummaryRequest request,
             @CurrentUser UserPrincipal currentUser) {
-        if (!orgAccessControl.canAccess(siteSummary.getOrganizationId())) {
+        if (!orgAccessControl.canAccess(request.getOrganizationId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        SiteSummary created = siteSummaryService.create(siteSummary, currentUser.getId());
-        return ResponseEntity.created(URI.create("/api/v1/site-summaries/" + created.getId())).body(created);
+        SiteSummary created = siteSummaryService.createSiteSummary(request, currentUser.getId());
+        return ResponseEntity.created(URI.create("/api/v1/site-summary/" + created.getId())).body(created);
     }
 
-    @PutMapping("/api/v1/site-summaries/{id}")
+    @PutMapping({"/api/v1/site-summaries/{id}", "/api/v1/site-summary/{id}"})
     public ResponseEntity<SiteSummary> updateSiteSummary(
             @PathVariable("id") UUID id,
-            @RequestBody SiteSummary siteSummary,
+            @RequestBody @Valid SiteSummaryRequest request,
             @CurrentUser UserPrincipal currentUser) {
         SiteSummary existing = siteSummaryService.getById(id);
         if (!orgAccessControl.canAccess(existing.getOrganizationId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        return ResponseEntity.ok(siteSummaryService.update(id, siteSummary, currentUser.getId()));
+        return ResponseEntity.ok(siteSummaryService.updateSiteSummary(id, request, currentUser.getId()));
     }
 
-    @DeleteMapping("/api/v1/site-summaries/{id}")
+    @PutMapping("/api/v1/site-summary/{id}/archive")
+    public ResponseEntity<SiteSummary> archiveSiteSummary(
+            @PathVariable("id") UUID id,
+            @CurrentUser UserPrincipal currentUser) {
+        SiteSummary existing = siteSummaryService.getById(id);
+        if (!orgAccessControl.canAccess(existing.getOrganizationId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(siteSummaryService.archiveSiteSummary(id, currentUser.getId()));
+    }
+
+    @DeleteMapping({"/api/v1/site-summaries/{id}", "/api/v1/site-summary/{id}"})
     public ResponseEntity<Void> deleteSiteSummary(
             @PathVariable("id") UUID id,
             @CurrentUser UserPrincipal currentUser) {

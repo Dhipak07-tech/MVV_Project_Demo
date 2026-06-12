@@ -24,7 +24,7 @@ public class ActivityEventController {
     private final OrgAccessControl orgAccessControl;
 
     @GetMapping("/{entityType}/{entityId}")
-    public ResponseEntity<List<ActivityEvent>> getEvents(
+    public ResponseEntity<List<ActivityEventService.ActivityEventDto>> getEvents(
             @PathVariable("entityType") String entityType,
             @PathVariable("entityId") UUID entityId,
             @RequestParam("organizationId") UUID organizationId,

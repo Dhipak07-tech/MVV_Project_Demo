@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import { Shield, Phone, Key, HelpCircle, AlertCircle } from 'lucide-react';
 import { useOrganization } from '../../hooks/useOrganizations';
 import RecordLayout from '../records/RecordLayout';
-import { API_URL } from '../../../../config/constants';
+import { clientContactApi } from '../../api/clientContactApi';
 
 interface AfterHoursData {
   organizationId: string;
@@ -34,18 +33,12 @@ export default function AfterHours() {
   const [securityVendor, setSecurityVendor] = useState('');
   const [notes, setNotes] = useState('');
 
-  const token = localStorage.getItem('accessToken');
-  const headers = { Authorization: `Bearer ${token}` };
-
   const fetchAfterHours = async () => {
     if (!orgId) return;
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/after-hours`, {
-        params: { organizationId: orgId },
-        headers
-      });
-      setData(response.data);
+      const result = await clientContactApi.afterHours.get(orgId);
+      setData(result);
     } catch (e) {
       console.error('Failed to load after hours information:', e);
     } finally {
@@ -82,8 +75,8 @@ export default function AfterHours() {
     };
 
     try {
-      const response = await axios.post(`${API_URL}/after-hours`, payload, { headers });
-      setData(response.data);
+      const result = await clientContactApi.afterHours.save(payload);
+      setData(result);
       setIsEditing(false);
     } catch (e) {
       console.error('Failed to save after hours info:', e);

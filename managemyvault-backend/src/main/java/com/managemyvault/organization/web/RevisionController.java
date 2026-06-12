@@ -24,7 +24,7 @@ public class RevisionController {
     private final OrgAccessControl orgAccessControl;
 
     @GetMapping("/{entityType}/{entityId}")
-    public ResponseEntity<List<EntityRevision>> getRevisions(
+    public ResponseEntity<List<RevisionService.EntityRevisionDto>> getRevisions(
             @PathVariable("entityType") String entityType,
             @PathVariable("entityId") UUID entityId,
             @RequestParam("organizationId") UUID organizationId,

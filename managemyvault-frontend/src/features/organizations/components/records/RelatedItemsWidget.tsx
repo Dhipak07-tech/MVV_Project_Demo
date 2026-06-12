@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link2, Unlink, Plus, X, Search, RefreshCw } from 'lucide-react';
-import axios from 'axios';
-import { API_URL } from '../../../../config/constants';
+import { clientContactApi } from '../../api/clientContactApi';
+import api from '../../api/organizationApi';
 
 interface RelatedItem {
   id: string;
@@ -46,20 +46,15 @@ export default function RelatedItemsWidget({
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const token = localStorage.getItem('accessToken');
-  const headers = { Authorization: `Bearer ${token}` };
-
   const fetchRelationships = async () => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId)) {
+      setRelationships([]);
+      return;
+    }
     setIsLoading(true);
     try {
-      const response = await axios.get(
-        `${API_URL}/relationships/${entityType}/${entityId}`,
-        {
-          params: { organizationId },
-          headers
-        }
-      );
-      setRelationships(response.data);
+      const data = await clientContactApi.relationships.list(entityType, entityId, organizationId);
+      setRelationships(data);
     } catch (error) {
       console.error('Failed to fetch relationships:', error);
     } finally {
@@ -74,21 +69,35 @@ export default function RelatedItemsWidget({
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
+    
+    if (localStorage.getItem('demoMode') === 'true') {
+      // Direct mock response in demoMode to avoid backend 403s
+      await new Promise(r => setTimeout(r, 150));
+      setSearchResults([
+        { id: crypto.randomUUID(), name: `Demo ${targetType} - "${searchQuery}"`, type: targetType }
+      ]);
+      setIsSearching(false);
+      return;
+    }
+
     try {
       // Search from global search endpoint
-      const response = await axios.get(`${API_URL}/organizations/search`, {
-        params: { q: searchQuery },
-        headers
+      const response = await api.get('/search', {
+        params: {
+          q: searchQuery,
+          organizationId,
+          type: targetType === 'Application' ? 'appservice' : targetType.toLowerCase()
+        }
       });
 
-      // Filter results matching the target type
-      const filtered = (response.data || [])
-        .filter((item: any) => item.type?.toLowerCase() === targetType.toLowerCase() || !item.type)
-        .map((item: any) => ({
-          id: item.id || item.orgId || 'mock-id',
-          name: item.name || item.title || searchQuery,
-          type: targetType
-        }));
+      const resultsList = response.data?.results || [];
+
+      // Filter and map results matching the target type
+      const filtered = resultsList.map((item: any) => ({
+        id: item.id,
+        name: item.title,
+        type: item.type || targetType
+      }));
 
       // Fallback with mock if empty to ensure the user can always link records in dev environment
       if (filtered.length === 0) {
@@ -109,18 +118,16 @@ export default function RelatedItemsWidget({
   };
 
   const handleLink = async (targetId: string) => {
+    const targetName = searchResults.find(r => r.id === targetId)?.name || 'Linked Record';
     try {
-      await axios.post(
-        `${API_URL}/relationships`,
-        {
-          organizationId,
-          sourceType: entityType,
-          sourceId: entityId,
-          targetType,
-          targetId
-        },
-        { headers }
-      );
+      await clientContactApi.relationships.link({
+        organizationId,
+        sourceType: entityType,
+        sourceId: entityId,
+        targetType,
+        targetId,
+        targetName
+      });
       setIsLinking(false);
       setSearchQuery('');
       setSearchResults([]);
@@ -133,7 +140,7 @@ export default function RelatedItemsWidget({
   const handleUnlink = async (relationshipId: string) => {
     if (!window.confirm('Are you sure you want to remove this link?')) return;
     try {
-      await axios.delete(`${API_URL}/relationships/${relationshipId}`, { headers });
+      await clientContactApi.relationships.unlink(relationshipId, organizationId, entityType, entityId);
       setRelationships(relationships.filter(r => r.id !== relationshipId));
     } catch (error) {
       console.error('Failed to delete relationship:', error);

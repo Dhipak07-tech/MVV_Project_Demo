@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { History, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import axios from 'axios';
-import { API_URL } from '../../../../config/constants';
+import { clientContactApi } from '../../api/clientContactApi';
 
 interface EntityRevision {
   id: string;
   beforeState: string | null;
   afterState: string | null;
   changedBy: string;
+  changedByName?: string;
   changedAt: string;
 }
 
@@ -26,20 +26,15 @@ export default function RevisionHistoryWidget({
   const [expandedRevId, setExpandedRevId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const token = localStorage.getItem('accessToken');
-  const headers = { Authorization: `Bearer ${token}` };
-
   const fetchRevisions = async () => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId)) {
+      setRevisions([]);
+      return;
+    }
     setIsLoading(true);
     try {
-      const response = await axios.get(
-        `${API_URL}/revisions/${entityType}/${entityId}`,
-        {
-          params: { organizationId },
-          headers
-        }
-      );
-      setRevisions(response.data);
+      const data = await clientContactApi.revisions.list(entityType, entityId, organizationId);
+      setRevisions(data);
     } catch (error) {
       console.error('Failed to fetch revisions:', error);
     } finally {
@@ -117,7 +112,7 @@ export default function RevisionHistoryWidget({
                     Version {revisions.length - idx}
                   </p>
                   <p className="text-[10px] text-text-muted mt-0.5">
-                    {new Date(rev.changedAt).toLocaleString()}
+                    By {rev.changedByName || 'System User'} on {new Date(rev.changedAt).toLocaleString()}
                   </p>
                 </div>
                 {isExpanded ? <ChevronUp className="w-4 h-4 text-text-muted" /> : <ChevronDown className="w-4 h-4 text-text-muted" />}

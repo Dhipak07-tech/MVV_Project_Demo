@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Paperclip, Trash2, Download, UploadCloud, FileText, ImageIcon } from 'lucide-react';
-import axios from 'axios';
-import { API_URL } from '../../../../config/constants';
+import { Paperclip, Trash2, Download, UploadCloud, FileText, ImageIcon, X, AlertCircle } from 'lucide-react';
+import { clientContactApi } from '../../api/clientContactApi';
+import api from '../../api/organizationApi';
 
 interface Attachment {
   id: string;
@@ -10,12 +10,19 @@ interface Attachment {
   size: number;
   createdAt: string;
   createdBy: string;
+  createdByUserName?: string;
 }
 
 interface AttachmentWidgetProps {
   organizationId: string;
   entityType: string;
   entityId: string;
+}
+
+interface Toast {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
 }
 
 export default function AttachmentWidget({
@@ -26,23 +33,26 @@ export default function AttachmentWidget({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [deleteAttachmentItem, setDeleteAttachmentItem] = useState<{ id: string; fileName: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const token = localStorage.getItem('accessToken');
-  const headers = {
-    Authorization: `Bearer ${token}`
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = crypto.randomUUID();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
   };
 
   const fetchAttachments = async () => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId)) {
+      setAttachments([]);
+      return;
+    }
     try {
-      const response = await axios.get(
-        `${API_URL}/attachments/${entityType}/${entityId}`,
-        {
-          params: { organizationId },
-          headers
-        }
-      );
-      setAttachments(response.data);
+      const data = await clientContactApi.attachments.list(entityType, entityId, organizationId);
+      setAttachments(data);
     } catch (error) {
       console.error('Failed to fetch attachments:', error);
     }
@@ -54,44 +64,63 @@ export default function AttachmentWidget({
 
   const handleUpload = async (file: File) => {
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append('organizationId', organizationId);
-    formData.append('entityType', entityType);
-    formData.append('entityId', entityId);
-    formData.append('file', file);
-
     try {
-      await axios.post(`${API_URL}/attachments/upload`, formData, {
-        headers: {
-          ...headers,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      fetchAttachments();
+      await clientContactApi.attachments.upload(organizationId, entityType, entityId, file);
+      await fetchAttachments();
+      showToast('File uploaded successfully', 'success');
+      window.dispatchEvent(new CustomEvent('activity-updated'));
     } catch (error) {
       console.error('Upload failed:', error);
+      showToast('Upload failed. Check permissions or file size.', 'error');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this attachment?')) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteAttachmentItem) return;
+    const { id, fileName } = deleteAttachmentItem;
+    setDeleteAttachmentItem(null);
+
     try {
-      await axios.delete(`${API_URL}/attachments/${id}`, { headers });
-      setAttachments(attachments.filter(a => a.id !== id));
-    } catch (error) {
+      await clientContactApi.attachments.delete(id, organizationId, entityType, entityId, fileName);
+      setAttachments(prev => prev.filter(a => a.id !== id));
+      showToast('Attachment deleted successfully', 'success');
+      window.dispatchEvent(new CustomEvent('activity-updated'));
+    } catch (error: any) {
       console.error('Delete failed:', error);
+      if (error?.response?.status === 403) {
+        showToast('Permission Denied. Only admins or the uploader can delete.', 'error');
+      } else {
+        showToast('Failed to delete attachment', 'error');
+      }
     }
   };
 
-  const handleDownload = (id: string, fileName: string) => {
-    axios({
-      url: `${API_URL}/attachments/${id}/download`,
-      method: 'GET',
-      responseType: 'blob',
-      headers
-    }).then((response) => {
+  const handleDownload = async (id: string, fileName: string) => {
+    if (localStorage.getItem('demoMode') === 'true') {
+      // Offline/Demo mock download
+      const blob = new Blob(["Demo Mode: Mock content for " + fileName], { type: "text/plain" });
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = href;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(href);
+
+      // Log download activity event in demo mode
+      clientContactApi.activities.log(organizationId, entityType, entityId, 'ATTACHMENT_DOWNLOAD', "Downloaded " + fileName);
+      showToast('Download started (Demo Mode)', 'success');
+      window.dispatchEvent(new CustomEvent('activity-updated'));
+      return;
+    }
+
+    try {
+      const response = await api.get(`/attachments/${id}/download`, {
+        responseType: 'blob'
+      });
       const href = URL.createObjectURL(response.data);
       const link = document.createElement('a');
       link.href = href;
@@ -100,9 +129,12 @@ export default function AttachmentWidget({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(href);
-    }).catch(error => {
+      showToast('Download started', 'success');
+      window.dispatchEvent(new CustomEvent('activity-updated'));
+    } catch (error) {
       console.error('Download failed:', error);
-    });
+      showToast('Failed to download file', 'error');
+    }
   };
 
   // Drag & drop handlers
@@ -140,7 +172,69 @@ export default function AttachmentWidget({
   };
 
   return (
-    <div className="glass-panel p-5 space-y-4">
+    <div className="glass-panel p-5 space-y-4 relative">
+      {/* Toast Notification Container */}
+      <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-lg shadow-xl border text-xs font-semibold max-w-sm pointer-events-auto backdrop-blur-md transition-all duration-300 ${
+              toast.type === 'success'
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                : toast.type === 'error'
+                ? 'bg-rose-500/10 text-rose-400 border-rose-500/25'
+                : 'bg-blue-500/10 text-blue-400 border-blue-500/25'
+            }`}
+          >
+            {toast.type === 'error' && <AlertCircle className="w-4 h-4 shrink-0" />}
+            <span>{toast.message}</span>
+            <button
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+              className="text-text-muted hover:text-text-primary transition-colors ml-auto"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteAttachmentItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="glass-panel w-full max-w-md p-6 space-y-6 border border-border-subtle shadow-2xl bg-vault-card/95">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5 text-status-danger">
+                <AlertCircle className="w-5 h-5" />
+                <h3 className="text-base font-bold">Delete Attachment</h3>
+              </div>
+              <p className="text-sm text-text-secondary">
+                Are you sure you want to delete:
+              </p>
+              <p className="text-sm font-semibold text-brand-primary break-all bg-vault-base/40 p-2.5 rounded border border-border-subtle/50 font-mono">
+                {deleteAttachmentItem.fileName}
+              </p>
+              <p className="text-xs text-text-muted font-medium">
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setDeleteAttachmentItem(null)}
+                className="px-4 py-2 text-xs font-semibold text-text-secondary hover:text-text-primary rounded-lg bg-vault-base/40 border border-border-subtle hover:bg-vault-base/80 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 text-xs font-semibold text-white rounded-lg bg-status-danger hover:bg-status-danger/80 transition-colors shadow-lg shadow-status-danger/20"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h3 className="text-sm font-bold text-text-primary flex items-center gap-2 pb-2.5 border-b border-border-subtle">
         <Paperclip className="w-4 h-4 text-brand-primary" />
         Attachments
@@ -175,41 +269,47 @@ export default function AttachmentWidget({
       </div>
 
       {/* List Attachments */}
-      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+      <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
         {attachments.map((a) => {
           const isImage = a.contentType.startsWith('image/');
           return (
             <div
               key={a.id}
-              className="flex items-center justify-between p-2.5 rounded-lg bg-vault-elevated/40 border border-border-subtle hover:bg-vault-elevated/70 transition-all text-xs"
+              className="flex items-start justify-between p-3 rounded-lg bg-vault-elevated/40 border border-border-subtle hover:bg-vault-elevated/70 transition-all text-xs gap-3"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-start gap-2.5 min-w-0 flex-1">
                 {isImage ? (
-                  <ImageIcon className="w-4 h-4 text-brand-secondary shrink-0" />
+                  <ImageIcon className="w-4 h-4 text-brand-secondary shrink-0 mt-0.5" />
                 ) : (
-                  <FileText className="w-4 h-4 text-brand-accent shrink-0" />
+                  <FileText className="w-4 h-4 text-brand-accent shrink-0 mt-0.5" />
                 )}
-                <div className="min-w-0">
-                  <p className="font-semibold text-text-primary truncate" title={a.fileName}>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-text-primary truncate pr-1" title={a.fileName}>
                     {a.fileName}
                   </p>
-                  <p className="text-[10px] text-text-muted mt-0.5">
-                    {formatSize(a.size)}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 text-[10px] text-text-secondary mt-1 font-medium">
+                    <span className="text-brand-primary">{formatSize(a.size)}</span>
+                    <span className="text-border-subtle">•</span>
+                    <span>{a.contentType.split('/')[1]?.toUpperCase() || 'FILE'}</span>
+                    <span className="text-border-subtle">•</span>
+                    <span>Uploaded by {a.createdByUserName || 'Unknown'}</span>
+                    <span className="text-border-subtle">•</span>
+                    <span>{new Date(a.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0 mt-0.5">
                 <button
                   onClick={() => handleDownload(a.id, a.fileName)}
-                  className="p-1 rounded hover:bg-vault-card text-text-muted hover:text-text-primary transition-colors"
+                  className="p-1.5 rounded hover:bg-vault-card text-text-muted hover:text-text-primary transition-colors"
                   title="Download File"
                 >
                   <Download className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => handleDelete(a.id)}
-                  className="p-1 rounded hover:bg-vault-card text-text-muted hover:text-status-danger transition-colors"
+                  onClick={() => setDeleteAttachmentItem({ id: a.id, fileName: a.fileName })}
+                  className="p-1.5 rounded hover:bg-vault-card text-text-muted hover:text-status-danger transition-colors"
                   title="Delete File"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

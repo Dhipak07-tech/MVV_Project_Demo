@@ -65,12 +65,10 @@ public class RelationshipController {
     public ResponseEntity<Void> unlink(
             @PathVariable("id") UUID id,
             @CurrentUser UserPrincipal currentUser) {
-        // Need to check access based on organizationId of the relationship.
-        // We'll perform it inside service or load it first.
-        // Since Relationship is handled, let's let RelationshipService.unlink handle it,
-        // but we check permissions by fetching it from the DB first.
-        // Let's add a findById to RelationshipRepository to do this check in controller.
-        // Or we can query inside service. Let's do it cleanly:
+        Relationship relationship = relationshipService.getById(id);
+        if (!orgAccessControl.canAccess(relationship.getOrganizationId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         relationshipService.unlink(id, currentUser.getId());
         return ResponseEntity.noContent().build();
     }

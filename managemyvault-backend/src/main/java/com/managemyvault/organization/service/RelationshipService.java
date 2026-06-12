@@ -104,23 +104,32 @@ public class RelationshipService {
 
         Relationship saved = relationshipRepository.save(relationship);
         
-        activityEventService.logEvent(orgId, sourceType, sourceId, "RELATIONSHIP_CREATE", userId);
-        activityEventService.logEvent(orgId, targetType, targetId, "RELATIONSHIP_CREATE", userId);
+        String targetName = getEntityName(targetType, targetId);
+        String sourceName = getEntityName(sourceType, sourceId);
+        activityEventService.logEvent(orgId, sourceType, sourceId, "RELATIONSHIP_CREATE", userId, targetType + ": " + targetName);
+        activityEventService.logEvent(orgId, targetType, targetId, "RELATIONSHIP_CREATE", userId, sourceType + ": " + sourceName);
 
         return saved;
     }
 
+    @Transactional(readOnly = true)
+    public Relationship getById(UUID id) {
+        return relationshipRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Relationship", id.toString()));
+    }
+
     @Transactional
     public void unlink(UUID id, UUID userId) {
-        Relationship relationship = relationshipRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Relationship", id.toString()));
+        Relationship relationship = getById(id);
 
         relationshipRepository.delete(relationship);
 
+        String targetName = getEntityName(relationship.getTargetType(), relationship.getTargetId());
+        String sourceName = getEntityName(relationship.getSourceType(), relationship.getSourceId());
         activityEventService.logEvent(relationship.getOrganizationId(), 
-                relationship.getSourceType(), relationship.getSourceId(), "RELATIONSHIP_DELETE", userId);
+                relationship.getSourceType(), relationship.getSourceId(), "RELATIONSHIP_DELETE", userId, relationship.getTargetType() + ": " + targetName);
         activityEventService.logEvent(relationship.getOrganizationId(), 
-                relationship.getTargetType(), relationship.getTargetId(), "RELATIONSHIP_DELETE", userId);
+                relationship.getTargetType(), relationship.getTargetId(), "RELATIONSHIP_DELETE", userId, relationship.getSourceType() + ": " + sourceName);
     }
 
     @Transactional(readOnly = true)

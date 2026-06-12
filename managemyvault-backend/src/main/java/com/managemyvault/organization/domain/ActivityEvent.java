@@ -34,6 +34,9 @@ public class ActivityEvent {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Column(name = "details", length = 255)
+    private String details;
+
     @Column(nullable = false)
     private Instant timestamp;
 

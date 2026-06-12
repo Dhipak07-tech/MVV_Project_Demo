@@ -40,6 +40,9 @@ public class Attachment extends AuditableEntity {
     @Column(name = "object_key", nullable = false, length = 512)
     private String objectKey;
 
+    @Transient
+    private String createdByUserName;
+
     @Version
     private Long version;
 }

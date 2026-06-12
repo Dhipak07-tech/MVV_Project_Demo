@@ -59,8 +59,7 @@ public class AuthService {
         }
 
         // Update last login
-        user.setLastLoginAt(Instant.now());
-        platformUserRepository.save(user);
+        platformUserRepository.updateLastLogin(user.getId(), Instant.now());
 
         // Generate tokens
         UserPrincipal principal = UserPrincipal.platformUser(
