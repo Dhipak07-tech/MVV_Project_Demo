@@ -1,23 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Globe, Shield, AlertTriangle, CheckCircle, Save, Trash2, X } from 'lucide-react';
-
-interface TrackerItem {
-  id: string;
-  name: string; // domain or host
-  type: 'SSL' | 'Domain';
-  registrarOrIssuer: string;
-  expiryDate: string;
-  autoRenew: boolean;
-  dnsOrStrength: string;
-}
-
-const DEFAULT_TRACKERS: TrackerItem[] = [
-  { id: '1', name: 'cyberdyne.com', type: 'Domain', registrarOrIssuer: 'GoDaddy', expiryDate: '2026-11-20', autoRenew: true, dnsOrStrength: 'ns1.cyberdyne.com / ns2.cyberdyne.com' },
-  { id: '2', name: 'secure.cyberdyne.com', type: 'SSL', registrarOrIssuer: 'DigiCert SHA2 Extended', expiryDate: '2026-08-14', autoRenew: false, dnsOrStrength: 'RSA 2048-bit' },
-  { id: '3', name: 'api.cyberdyne.com', type: 'SSL', registrarOrIssuer: "Let's Encrypt Authority X3", expiryDate: '2026-07-02', autoRenew: true, dnsOrStrength: 'ECDSA P-256' }
-];
+import { Plus, Search, Globe, Shield, AlertTriangle, CheckCircle, Trash2, X, Loader2 } from 'lucide-react';
+import { useTrackers, useCreateTracker, useDeleteTracker } from '../../../hooks/useDocs';
 
 interface TrackersPageProps {
   mode: 'ssl' | 'domain';
@@ -25,7 +10,6 @@ interface TrackersPageProps {
 
 export default function TrackersPage({ mode }: TrackersPageProps) {
   const { orgId } = useParams<{ orgId: string }>();
-  const [items, setItems] = useState<TrackerItem[]>([]);
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
@@ -38,20 +22,14 @@ export default function TrackersPage({ mode }: TrackersPageProps) {
     dnsOrStrength: ''
   });
 
-  useEffect(() => {
-    const stored = localStorage.getItem(`mmv_trackers_${orgId}`);
-    if (stored) {
-      setItems(JSON.parse(stored));
-    } else {
-      setItems(DEFAULT_TRACKERS);
-      localStorage.setItem(`mmv_trackers_${orgId}`, JSON.stringify(DEFAULT_TRACKERS));
-    }
-  }, [orgId]);
+  const dbType = mode === 'ssl' ? 'SSL' : 'Domain';
 
-  const saveItems = (updated: TrackerItem[]) => {
-    setItems(updated);
-    localStorage.setItem(`mmv_trackers_${orgId}`, JSON.stringify(updated));
-  };
+  // React Query Hooks
+  const { data: pageData, isLoading } = useTrackers(orgId || '', dbType, search);
+  const createMutation = useCreateTracker();
+  const deleteMutation = useDeleteTracker();
+
+  const items = pageData?.content || [];
 
   const handleOpenAdd = () => {
     setForm({
@@ -64,28 +42,36 @@ export default function TrackersPage({ mode }: TrackersPageProps) {
     setIsOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.expiryDate) return;
+    if (!form.name || !form.expiryDate || !orgId) return;
 
-    const newItem: TrackerItem = {
-      id: crypto.randomUUID(),
-      name: form.name,
-      type: mode === 'ssl' ? 'SSL' : 'Domain',
-      registrarOrIssuer: form.registrarOrIssuer,
-      expiryDate: form.expiryDate,
-      autoRenew: form.autoRenew,
-      dnsOrStrength: form.dnsOrStrength
-    };
-
-    saveItems([...items, newItem]);
-    setIsOpen(false);
+    try {
+      await createMutation.mutateAsync({
+        orgId,
+        tracker: {
+          name: form.name,
+          type: dbType,
+          registrarOrIssuer: form.registrarOrIssuer,
+          expiryDate: form.expiryDate,
+          autoRenew: form.autoRenew,
+          dnsOrStrength: form.dnsOrStrength
+        }
+      });
+      setIsOpen(false);
+    } catch (err) {
+      console.error('Failed to create tracker', err);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (!orgId) return;
     if (confirm('Are you sure you want to delete this tracker item?')) {
-      const updated = items.filter(i => i.id !== id);
-      saveItems(updated);
+      try {
+        await deleteMutation.mutateAsync({ orgId, id, type: dbType });
+      } catch (err) {
+        console.error('Failed to delete tracker', err);
+      }
     }
   };
 
@@ -96,18 +82,9 @@ export default function TrackersPage({ mode }: TrackersPageProps) {
   };
 
   const modeTitle = mode === 'ssl' ? 'SSL Certificates' : 'Domains';
-  const itemTypeFilter = mode === 'ssl' ? 'SSL' : 'Domain';
-
-  const filtered = items
-    .filter(i => i.type === itemTypeFilter)
-    .filter(i =>
-      i.name.toLowerCase().includes(search.toLowerCase()) ||
-      i.registrarOrIssuer.toLowerCase().includes(search.toLowerCase())
-    );
 
   return (
     <div className="p-6 space-y-6 bg-vault-base text-text-primary transition-colors duration-200">
-      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-5">
         <div>
@@ -118,7 +95,7 @@ export default function TrackersPage({ mode }: TrackersPageProps) {
             {modeTitle} Tracker
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Monitor registration deadlines, issuing authorizers, and automatic renewals.
+            Monitor and track certificate expiration warnings and registrar status.
           </p>
         </div>
 
@@ -128,7 +105,7 @@ export default function TrackersPage({ mode }: TrackersPageProps) {
         </button>
       </div>
 
-      {/* Search Input */}
+      {/* Search Bar */}
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
         <input
@@ -140,128 +117,155 @@ export default function TrackersPage({ mode }: TrackersPageProps) {
         />
       </div>
 
-      {/* Grid of tracker cards */}
+      {/* Grid of Trackers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {filtered.map((item) => {
-          const daysLeft = getDaysLeft(item.expiryDate);
-          const isExpiringSoon = daysLeft < 30;
-          const isExpired = daysLeft <= 0;
+        {isLoading ? (
+          <div className="col-span-2 flex justify-center items-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+          </div>
+        ) : items.length > 0 ? (
+          items.map((item) => {
+            const daysLeft = getDaysLeft(item.expiryDate);
+            const isCritical = daysLeft <= 30;
+            const isWarning = daysLeft > 30 && daysLeft <= 90;
 
-          return (
-            <div key={item.id} className="card-elevated p-5 flex flex-col justify-between">
-              <div>
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                      mode === 'ssl' ? 'bg-brand-primary/10 text-brand-primary' : 'bg-brand-secondary/10 text-brand-secondary'
+            return (
+              <motion.div
+                layout
+                key={item.id}
+                className="card-elevated p-5 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-lg bg-brand-primary/15 flex items-center justify-center text-brand-primary">
+                        {mode === 'ssl' ? <Shield className="w-4.5 h-4.5" /> : <Globe className="w-4.5 h-4.5" />}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-text-primary">{item.name}</h3>
+                        <span className="text-[10px] text-text-muted font-mono">{item.dnsOrStrength}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deleteMutation.isPending}
+                      className="p-1.5 rounded hover:bg-status-danger/10 text-text-secondary hover:text-status-danger transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-xs">
+                    <div className="flex justify-between items-center bg-vault-base/30 px-3 py-2 rounded border border-border-subtle/50">
+                      <span className="text-text-secondary">{mode === 'ssl' ? 'Issuer' : 'Registrar'}:</span>
+                      <span className="font-semibold text-text-primary font-mono">{item.registrarOrIssuer}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-vault-base/30 px-3 py-2 rounded border border-border-subtle/50">
+                      <span className="text-text-secondary">Expiry Date:</span>
+                      <span className="font-semibold text-text-primary font-mono">{item.expiryDate}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-vault-base/30 px-3 py-2 rounded border border-border-subtle/50">
+                      <span className="text-text-secondary">Auto Renew:</span>
+                      <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-bold ${
+                        item.autoRenew ? 'bg-status-success/15 text-status-success' : 'bg-vault-elevated text-text-muted'
+                      }`}>
+                        {item.autoRenew ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 border-t border-border-subtle/50 pt-3 flex justify-between items-center text-[10px]">
+                  <span className="text-text-muted">Time Remaining</span>
+                  <div className="flex items-center gap-1">
+                    {isCritical ? (
+                      <AlertTriangle className="w-3.5 h-3.5 text-status-danger animate-pulse" />
+                    ) : isWarning ? (
+                      <AlertTriangle className="w-3.5 h-3.5 text-status-warning" />
+                    ) : (
+                      <CheckCircle className="w-3.5 h-3.5 text-status-success" />
+                    )}
+                    <span className={`font-bold ${
+                      isCritical ? 'text-status-danger' : isWarning ? 'text-status-warning' : 'text-status-success'
                     }`}>
-                      {mode === 'ssl' ? <Shield className="w-4.5 h-4.5" /> : <Globe className="w-4.5 h-4.5" />}
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-bold text-text-primary">{item.name}</h3>
-                      <p className="text-[10px] text-text-muted mt-0.5">{item.registrarOrIssuer}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="p-1.5 rounded hover:bg-status-danger/10 text-text-secondary hover:text-status-danger transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-5 pt-3 border-t border-border-subtle text-xs">
-                  <div>
-                    <span className="text-[9px] uppercase font-bold text-text-muted">Expiry Date</span>
-                    <p className="font-semibold text-text-primary mt-0.5">{item.expiryDate}</p>
-                  </div>
-                  <div>
-                    <span className="text-[9px] uppercase font-bold text-text-muted">Auto Renewal</span>
-                    <p className="font-semibold text-text-primary mt-0.5">{item.autoRenew ? 'Enabled' : 'Disabled'}</p>
+                      {daysLeft < 0 ? 'Expired' : `${daysLeft} Days Left`}
+                    </span>
                   </div>
                 </div>
-
-                <div className="mt-3 text-[10px] text-text-secondary font-mono bg-vault-elevated/40 p-2 rounded border border-border-subtle truncate">
-                  {mode === 'ssl' ? 'Encryption: ' : 'Nameservers: '}{item.dnsOrStrength}
-                </div>
-              </div>
-
-              {/* Status footer inside card */}
-              <div className="mt-4 flex items-center gap-2 text-xs">
-                {isExpired ? (
-                  <div className="flex items-center gap-1.5 text-status-danger">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="font-bold uppercase text-[10px]">Expired</span>
-                  </div>
-                ) : isExpiringSoon ? (
-                  <div className="flex items-center gap-1.5 text-status-warning">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="font-bold uppercase text-[10px]">Expiring in {daysLeft} days</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-status-success">
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="font-bold uppercase text-[10px]">{daysLeft} Days Left</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+              </motion.div>
+            );
+          })
+        ) : (
+          <div className="col-span-2 glass-panel p-12 text-center flex flex-col items-center justify-center">
+            {mode === 'ssl' ? <Shield className="w-12 h-12 text-text-muted mb-4" /> : <Globe className="w-12 h-12 text-text-muted mb-4" />}
+            <h3 className="text-sm font-bold text-text-primary mb-1">No Assets Tracked</h3>
+            <p className="text-xs text-text-muted max-w-xs">
+              Configure domain names or SSL certificates to monitor certificate warning windows.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Add Modal */}
+      {/* Slide-over Form Panel */}
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <>
             <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 15 }}
-              className="w-full max-w-md bg-vault-card border border-border-subtle rounded-xl shadow-2xl p-6 relative"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black z-40"
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 20 }}
+              className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-vault-card border-l border-border-default p-6 shadow-2xl z-50 overflow-y-auto"
             >
-              <button
-                onClick={() => setIsOpen(false)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-vault-elevated text-text-muted hover:text-text-primary transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <h2 className="text-base font-bold text-text-primary mb-4">
-                Add {modeTitle}
-              </h2>
+              <div className="flex justify-between items-center border-b border-border-subtle pb-4 mb-6">
+                <div>
+                  <h2 className="text-base font-bold text-text-primary">Add Tracker Asset</h2>
+                  <p className="text-xs text-text-muted mt-0.5">Configure warning schedules for expiring security profiles.</p>
+                </div>
+                <button onClick={() => setIsOpen(false)} className="p-1 text-text-muted hover:text-text-primary">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
               <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">
-                    {mode === 'ssl' ? 'Hostname (Common Name)' : 'Domain Name'}
-                  </label>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-text-secondary">Domain / Common Name (CN)</label>
                   <input
                     type="text"
                     required
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     className="input-field text-xs"
-                    placeholder="e.g. app.cyberdyne.com"
+                    placeholder={mode === 'ssl' ? 'e.g. secure.cyberdyne.com' : 'e.g. cyberdyne.com'}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-text-secondary">
+                    {mode === 'ssl' ? 'Certificate Issuer' : 'Domain Registrar'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form.registrarOrIssuer}
+                    onChange={(e) => setForm({ ...form, registrarOrIssuer: e.target.value })}
+                    className="input-field text-xs"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">
-                      {mode === 'ssl' ? 'Certificate Authority' : 'Registrar'}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={form.registrarOrIssuer}
-                      onChange={(e) => setForm({ ...form, registrarOrIssuer: e.target.value })}
-                      className="input-field text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Expiration Date</label>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-text-secondary">Expiration Date</label>
                     <input
                       type="date"
                       required
@@ -270,46 +274,44 @@ export default function TrackersPage({ mode }: TrackersPageProps) {
                       className="input-field text-xs"
                     />
                   </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-text-secondary">DNS Servers / SSL Spec</label>
+                    <input
+                      type="text"
+                      required
+                      value={form.dnsOrStrength}
+                      onChange={(e) => setForm({ ...form, dnsOrStrength: e.target.value })}
+                      className="input-field text-xs"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">
-                    {mode === 'ssl' ? 'Key Parameters / Strength' : 'DNS Servers (CSV)'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={form.dnsOrStrength}
-                    onChange={(e) => setForm({ ...form, dnsOrStrength: e.target.value })}
-                    className="input-field text-xs font-mono"
-                    placeholder={mode === 'ssl' ? 'RSA 2048-bit' : 'ns1.host.com, ns2.host.com'}
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 py-2">
+                <div className="flex items-center gap-2 p-3 bg-vault-elevated/20 rounded border border-border-subtle mt-2">
                   <input
                     type="checkbox"
                     id="autoRenew"
                     checked={form.autoRenew}
                     onChange={(e) => setForm({ ...form, autoRenew: e.target.checked })}
-                    className="rounded bg-vault-base border-border-subtle text-brand-primary focus:ring-0 w-4 h-4 cursor-pointer"
+                    className="rounded border-border-subtle text-brand-primary focus:ring-brand-primary bg-vault-base"
                   />
-                  <label htmlFor="autoRenew" className="text-xs text-text-secondary cursor-pointer font-semibold">
-                    Enable automatic billing / alerts renewal
+                  <label htmlFor="autoRenew" className="text-xs font-semibold text-text-primary cursor-pointer select-none">
+                    Auto-Renew Enabled (Suppresses critical warnings)
                   </label>
                 </div>
 
-                <div className="flex gap-3 justify-end pt-3 border-t border-border-subtle">
-                  <button type="button" onClick={() => setIsOpen(false)} className="btn-secondary py-2 text-xs">
-                    Cancel
+                <div className="pt-4 flex gap-3">
+                  <button type="submit" disabled={createMutation.isPending} className="flex-1 btn-primary py-2 flex items-center justify-center gap-1.5">
+                    {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Save Asset Tracker
                   </button>
-                  <button type="submit" className="btn-primary py-2 text-xs">
-                    Save Item
+                  <button type="button" onClick={() => setIsOpen(false)} className="flex-1 btn-secondary py-2">
+                    Cancel
                   </button>
                 </div>
               </form>
             </motion.div>
-          </div>
+          </>
         )}
       </AnimatePresence>
     </div>

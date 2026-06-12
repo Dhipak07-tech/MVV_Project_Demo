@@ -14,6 +14,8 @@ public interface TrackerRepository extends JpaRepository<Tracker, UUID> {
 
     List<Tracker> findByOrganizationIdAndType(UUID organizationId, String type);
 
+    Page<Tracker> findByOrganizationIdAndType(UUID organizationId, String type, Pageable pageable);
+
     Page<Tracker> findByOrganizationIdAndTypeAndNameContainingIgnoreCase(
             UUID organizationId, String type, String name, Pageable pageable);
 }

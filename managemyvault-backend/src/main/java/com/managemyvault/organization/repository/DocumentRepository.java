@@ -16,5 +16,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
     List<Document> findByOrganizationIdAndCategory(UUID organizationId, String category);
 
+    Page<Document> findByOrganizationIdAndCategoryAndTitleContainingIgnoreCase(UUID organizationId, String category, String title, Pageable pageable);
+
+    Page<Document> findByOrganizationIdAndCategory(UUID organizationId, String category, Pageable pageable);
+
     Page<Document> findByOrganizationIdAndTitleContainingIgnoreCase(UUID organizationId, String title, Pageable pageable);
 }

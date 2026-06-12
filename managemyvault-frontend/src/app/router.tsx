@@ -22,6 +22,14 @@ import ExceptionsLog from '../features/organizations/components/workspace/docs/E
 import TrackersPage from '../features/organizations/components/workspace/docs/TrackersPage';
 import NetworksAndMfaPage from '../features/organizations/components/workspace/docs/NetworksAndMfaPage';
 
+// Sprint 4 Pages
+import AssetsPage from '../features/organizations/components/workspace/assets/AssetsPage';
+import NetworkingPage from '../features/organizations/components/workspace/networking/NetworkingPage';
+
+// Sprint 5 Pages
+import AppsPage from '../features/organizations/components/workspace/apps/AppsPage';
+import BackupsPage from '../features/organizations/components/workspace/backups/BackupsPage';
+
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('accessToken');
   if (!token) return <Navigate to="/login" replace />;
@@ -71,6 +79,18 @@ export const router = createBrowserRouter([
           { path: 'docs/known-issues', element: <NetworksAndMfaPage mode="known-issues" /> },
           { path: 'docs/maintenance-windows', element: <NetworksAndMfaPage mode="maintenance" /> },
           
+          // Hardware Assets (Sprint 4)
+          { path: 'assets/:assetType', element: <AssetsPage /> },
+
+          // Networking Assets (Sprint 4)
+          { path: 'networking/:netType', element: <NetworkingPage /> },
+
+          // Apps & Services (Sprint 5)
+          { path: 'apps/:appType', element: <AppsPage /> },
+
+          // Backup Solutions (Sprint 5)
+          { path: 'backups/:backupType', element: <BackupsPage /> },
+
           { path: '*', element: <ComingSoon /> },
         ],
       },

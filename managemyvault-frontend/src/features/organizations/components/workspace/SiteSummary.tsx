@@ -1,104 +1,162 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import {
-  Building2, Users, MapPin, Database, FileText, CheckCircle,
-  AlertCircle, Edit2, Save, ExternalLink
-} from 'lucide-react';
+import axios from 'axios';
+import { Building2, Users, FileText, AlertCircle, Clock, MapPin, Globe } from 'lucide-react';
 import { useOrganization } from '../../hooks/useOrganizations';
+import RecordLayout from '../records/RecordLayout';
+import { API_URL } from '../../../../config/constants';
 
-interface Contact {
+interface SiteSummaryData {
+  id?: string;
+  organizationId: string;
+  title: string;
+  timezone: string;
+  businessHours: string;
+  notes: string;
+  primaryContactId?: string;
+  emergencyContactId?: string;
+  authorizationContactId?: string;
+  active: boolean;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+interface ContactOption {
   id: string;
   name: string;
   title: string;
-  email: string;
-  phone: string;
-  type: string;
-  status: string;
 }
-
-interface LocationItem {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  state: string;
-  type: string;
-}
-
-interface CriticalSystem {
-  id: string;
-  name: string;
-  type: string;
-  status: 'Online' | 'Offline' | 'Maintenance';
-  description: string;
-}
-
-const DEFAULT_SYSTEMS: CriticalSystem[] = [
-  { id: '1', name: 'Primary Domain Controller', type: 'Active Directory', status: 'Online', description: 'Windows Server 2022 handling identity management.' },
-  { id: '2', name: 'Cloud Email Cluster', type: 'Email', status: 'Online', description: 'Microsoft 365 Tenant Exchange Integration.' },
-  { id: '3', name: 'HQ Border Firewall', type: 'Security Services', status: 'Online', description: 'Palo Alto Networks Next-Gen border security.' },
-];
 
 export default function SiteSummary() {
   const { orgId } = useParams<{ orgId: string }>();
-  const { data: org, isLoading } = useOrganization(orgId);
+  const { data: org, isLoading: isOrgLoading } = useOrganization(orgId);
 
   // States
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [locations, setLocations] = useState<LocationItem[]>([]);
-  const [systems, setSystems] = useState<CriticalSystem[]>([]);
+  const [data, setData] = useState<SiteSummaryData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [contacts, setContacts] = useState<ContactOption[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Form states
+  const [title, setTitle] = useState('');
+  const [timezone, setTimezone] = useState('');
+  const [businessHours, setBusinessHours] = useState('');
   const [notes, setNotes] = useState('');
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [primaryContactId, setPrimaryContactId] = useState('');
+  const [emergencyContactId, setEmergencyContactId] = useState('');
+  const [authorizationContactId, setAuthorizationContactId] = useState('');
 
-  // Load data
+  const token = localStorage.getItem('accessToken');
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const fetchSiteSummary = async () => {
+    if (!orgId) return;
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/organizations/${orgId}/site-summary`, { headers });
+      setData(response.data);
+      setError(null);
+    } catch (e: any) {
+      if (e.response?.status === 404) {
+        // Not found, we will initialize a blank form
+        setData(null);
+      } else {
+        setError('Failed to load site summary.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Contacts
-    const storedContacts = localStorage.getItem(`mmv_contacts_${orgId}`);
-    if (storedContacts) {
-      setContacts(JSON.parse(storedContacts));
-    }
+    fetchSiteSummary();
 
-    // Locations
-    const storedLocs = localStorage.getItem(`mmv_locations_${orgId}`);
-    if (storedLocs) {
-      setLocations(JSON.parse(storedLocs));
-    }
-
-    // Critical Systems
-    const storedSys = localStorage.getItem(`mmv_site_summary_systems_${orgId}`);
-    if (storedSys) {
-      setSystems(JSON.parse(storedSys));
-    } else {
-      setSystems(DEFAULT_SYSTEMS);
-      localStorage.setItem(`mmv_site_summary_systems_${orgId}`, JSON.stringify(DEFAULT_SYSTEMS));
-    }
-
-    // Org Notes
-    const storedNotes = localStorage.getItem(`mmv_notes_${orgId}`);
-    if (storedNotes) {
-      setNotes(storedNotes);
-    } else {
-      setNotes('No organization summary notes have been created yet. Click edit to compile office instructions, vendor contact rules, or escalation schedules.');
+    // Load contacts from local storage
+    if (orgId) {
+      const storedContacts = localStorage.getItem(`mmv_contacts_${orgId}`);
+      if (storedContacts) {
+        setContacts(JSON.parse(storedContacts));
+      }
     }
   }, [orgId]);
 
-  const handleSaveNotes = () => {
-    localStorage.setItem(`mmv_notes_${orgId}`, notes);
-    setIsEditingNotes(false);
+  // Sync form fields when editing starts or data changes
+  useEffect(() => {
+    if (data) {
+      setTitle(data.title || '');
+      setTimezone(data.timezone || '');
+      setBusinessHours(data.businessHours || '');
+      setNotes(data.notes || '');
+      setPrimaryContactId(data.primaryContactId || '');
+      setEmergencyContactId(data.emergencyContactId || '');
+      setAuthorizationContactId(data.authorizationContactId || '');
+    } else {
+      setTitle('Primary Headquarters');
+      setTimezone('America/New_York');
+      setBusinessHours('09:00 - 17:00');
+      setNotes('');
+      setPrimaryContactId('');
+      setEmergencyContactId('');
+      setAuthorizationContactId('');
+    }
+  }, [data, isEditing]);
+
+  const handleSave = async () => {
+    if (!orgId) return;
+    const payload = {
+      organizationId: orgId,
+      title,
+      timezone,
+      businessHours,
+      notes,
+      primaryContactId: primaryContactId || null,
+      emergencyContactId: emergencyContactId || null,
+      authorizationContactId: authorizationContactId || null,
+      active: true
+    };
+
+    try {
+      if (data?.id) {
+        // Update
+        const response = await axios.put(`${API_URL}/site-summaries/${data.id}`, payload, { headers });
+        setData(response.data);
+      } else {
+        // Create
+        const response = await axios.post(`${API_URL}/site-summaries`, payload, { headers });
+        setData(response.data);
+      }
+      setIsEditing(false);
+      fetchSiteSummary();
+    } catch (e) {
+      console.error('Failed to save site summary:', e);
+      alert('Error saving site summary.');
+    }
   };
 
-  const primaryContacts = contacts.filter((c) => c.type === 'Primary' || c.type === 'Technical');
-  const primaryLocations = locations.filter((l) => l.type === 'HQ' || l.type === 'Data Center');
+  const handleDelete = async () => {
+    if (!data?.id) return;
+    if (!window.confirm('Are you sure you want to delete this Site Summary?')) return;
+    try {
+      await axios.delete(`${API_URL}/site-summaries/${data.id}`, { headers });
+      setData(null);
+      setIsEditing(false);
+    } catch (e) {
+      console.error('Delete failed:', e);
+    }
+  };
 
-  if (isLoading) {
+  const getContactName = (id?: string) => {
+    if (!id) return 'Not Configured';
+    const c = contacts.find(item => item.id === id);
+    return c ? c.name : 'Unknown Contact';
+  };
+
+  if (isOrgLoading || isLoading) {
     return (
       <div className="p-8 space-y-6">
         <div className="h-8 w-64 bg-vault-elevated animate-pulse rounded-lg" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="h-60 bg-vault-elevated animate-pulse rounded-xl" />
-          <div className="h-60 bg-vault-elevated animate-pulse rounded-xl" />
-        </div>
+        <div className="h-60 bg-vault-elevated animate-pulse rounded-xl" />
       </div>
     );
   }
@@ -112,176 +170,218 @@ export default function SiteSummary() {
     );
   }
 
-  return (
-    <div className="p-6 space-y-6 bg-vault-base text-text-primary transition-colors duration-200">
-      {/* Header */}
-      <div className="border-b border-border-subtle pb-5">
-        <span className="text-xs font-semibold text-brand-primary tracking-wider uppercase">
-          Client Contact
-        </span>
-        <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-1">
-          Site Summary
-        </h1>
-        <p className="text-sm text-text-secondary mt-0.5">
-          Master documentation and overview sheet for {org.name}.
+  // If no summary exists and not editing, show setup view
+  if (!data && !isEditing) {
+    return (
+      <div className="p-8 text-center max-w-md mx-auto space-y-4">
+        <Building2 className="w-12 h-12 mx-auto text-brand-primary opacity-80" />
+        <h2 className="text-lg font-bold text-text-primary">No Site Summary Configured</h2>
+        <p className="text-xs text-text-secondary">
+          Compile operating timezone, business hours, and authority contacts for {org.name}.
         </p>
+        <button
+          onClick={() => setIsEditing(true)}
+          className="btn-primary py-2 px-4 text-xs font-semibold"
+        >
+          Initialize Site Summary
+        </button>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column: Company details + Critical systems */}
-        <div className="lg:col-span-2 space-y-6">
-          
-          {/* Company Details */}
-          <div className="glass-panel p-6 space-y-4">
-            <h2 className="text-base font-bold text-text-primary flex items-center gap-2 pb-3 border-b border-border-subtle">
-              <Building2 className="w-4.5 h-4.5 text-brand-primary" />
-              Company Details
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div>
-                <p className="text-text-muted font-semibold uppercase tracking-wider">Company Name</p>
-                <p className="text-sm text-text-primary mt-1 font-semibold">{org.name}</p>
-              </div>
-              <div>
-                <p className="text-text-muted font-semibold uppercase tracking-wider">Industry</p>
-                <p className="text-sm text-text-primary mt-1 font-semibold">{org.industry || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-text-muted font-semibold uppercase tracking-wider">Domain / Website</p>
-                <a
-                  href={`https://${org.slug}.com`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-brand-primary hover:underline mt-1 font-semibold flex items-center gap-1"
-                >
-                  {org.slug}.com
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-              <div>
-                <p className="text-text-muted font-semibold uppercase tracking-wider">Status</p>
-                <span className="badge badge-success text-[10px] uppercase font-bold mt-1.5 inline-block">
-                  {org.status}
-                </span>
-              </div>
-            </div>
-            <div className="text-xs pt-2">
-              <p className="text-text-muted font-semibold uppercase tracking-wider">Description</p>
-              <p className="text-text-secondary mt-1 leading-relaxed">
-                {org.description || 'No company description has been added yet.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Critical Systems */}
-          <div className="glass-panel p-6">
-            <h2 className="text-base font-bold text-text-primary flex items-center gap-2 pb-3 border-b border-border-subtle mb-4">
-              <Database className="w-4.5 h-4.5 text-brand-secondary" />
-              Critical Systems
-            </h2>
-            <div className="space-y-3">
-              {systems.map((sys) => (
-                <div key={sys.id} className="flex items-start justify-between p-3.5 rounded-xl bg-vault-elevated/40 border border-border-subtle">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xs font-bold text-text-primary">{sys.name}</h3>
-                      <span className="text-[9px] px-2 py-0.5 bg-vault-base rounded-full border border-border-subtle text-text-secondary">
-                        {sys.type}
-                      </span>
-                    </div>
-                    <p className="text-xs text-text-secondary mt-1">{sys.description}</p>
-                  </div>
-                  <span className="badge badge-success text-[9px] uppercase font-bold">
-                    {sys.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Primary contacts & Locations */}
-        <div className="space-y-6">
-          
-          {/* Primary Contacts */}
-          <div className="glass-panel p-6">
-            <h2 className="text-base font-bold text-text-primary flex items-center gap-2 pb-3 border-b border-border-subtle mb-4">
-              <Users className="w-4.5 h-4.5 text-status-success" />
-              Primary Contacts
-            </h2>
-            {primaryContacts.length > 0 ? (
-              <div className="space-y-3.5">
-                {primaryContacts.map((c) => (
-                  <div key={c.id} className="text-xs">
-                    <p className="font-bold text-text-primary">{c.name}</p>
-                    <p className="text-text-muted text-[10px] mt-0.5">{c.title} ({c.type})</p>
-                    <p className="text-text-secondary mt-1 font-mono">{c.email}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-text-muted">No primary contacts configured.</p>
-            )}
-          </div>
-
-          {/* Primary Locations */}
-          <div className="glass-panel p-6">
-            <h2 className="text-base font-bold text-text-primary flex items-center gap-2 pb-3 border-b border-border-subtle mb-4">
-              <MapPin className="w-4.5 h-4.5 text-status-warning" />
-              Primary Sites
-            </h2>
-            {primaryLocations.length > 0 ? (
-              <div className="space-y-3.5">
-                {primaryLocations.map((l) => (
-                  <div key={l.id} className="text-xs">
-                    <p className="font-bold text-text-primary">{l.name}</p>
-                    <p className="text-text-secondary mt-1">{l.address}</p>
-                    <p className="text-text-muted text-[10px] mt-0.5">{l.city}, {l.state}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-text-muted">No primary sites configured.</p>
-            )}
-          </div>
-
-        </div>
-      </div>
-
-      {/* Row: Organization Notes */}
-      <div className="glass-panel p-6">
-        <div className="flex justify-between items-center pb-3 border-b border-border-subtle mb-4">
-          <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-            <FileText className="w-4.5 h-4.5 text-brand-accent" />
-            General Site & Onsite Notes
+  return (
+    <RecordLayout
+      breadcrumbs={[org.name, 'Site Summary', data?.title || 'Primary Headquarters']}
+      title={data?.title || 'Primary Headquarters'}
+      type="SiteSummary"
+      organizationId={orgId || ''}
+      entityId={data?.id || 'new-record'}
+      lastUpdated={data?.updatedAt}
+      updatedBy="System Administrator"
+      onEdit={() => setIsEditing(!isEditing)}
+      onDelete={data?.id ? handleDelete : undefined}
+      onShareLink={() => {
+        navigator.clipboard.writeText(window.location.href);
+        alert('Copied link to clipboard!');
+      }}
+    >
+      {isEditing ? (
+        <div className="glass-panel p-6 space-y-5 text-xs">
+          <h2 className="text-sm font-bold text-text-primary pb-2 border-b border-border-subtle flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-brand-primary" />
+            Edit Site Summary
           </h2>
-          {isEditingNotes ? (
-            <button onClick={handleSaveNotes} className="btn-primary py-1 px-3 text-xs flex items-center gap-1.5">
-              <Save className="w-3.5 h-3.5" /> Save Notes
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="input-field py-2 px-3"
+                placeholder="e.g. Primary Headquarters"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Timezone</label>
+              <input
+                type="text"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className="input-field py-2 px-3"
+                placeholder="e.g. America/New_York"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Business Hours</label>
+              <input
+                type="text"
+                value={businessHours}
+                onChange={(e) => setBusinessHours(e.target.value)}
+                className="input-field py-2 px-3"
+                placeholder="e.g. 09:00 - 17:00 EST"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-border-subtle pt-4">
+            <div>
+              <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Primary Contact</label>
+              <select
+                value={primaryContactId}
+                onChange={(e) => setPrimaryContactId(e.target.value)}
+                className="input-field py-2 px-3"
+              >
+                <option value="">None Selected</option>
+                {contacts.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.title})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Emergency Contact</label>
+              <select
+                value={emergencyContactId}
+                onChange={(e) => setEmergencyContactId(e.target.value)}
+                className="input-field py-2 px-3"
+              >
+                <option value="">None Selected</option>
+                {contacts.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.title})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Authorization Contact</label>
+              <select
+                value={authorizationContactId}
+                onChange={(e) => setAuthorizationContactId(e.target.value)}
+                className="input-field py-2 px-3"
+              >
+                <option value="">None Selected</option>
+                {contacts.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.title})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="border-t border-border-subtle pt-4">
+            <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">General Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="input-field h-36 font-mono leading-relaxed"
+              placeholder="Compile summary instructions..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => setIsEditing(false)}
+              className="btn-secondary py-2 px-4"
+            >
+              Cancel
             </button>
-          ) : (
-            <button onClick={() => setIsEditingNotes(true)} className="btn-secondary py-1 px-3 text-xs flex items-center gap-1.5">
-              <Edit2 className="w-3.5 h-3.5" /> Edit Notes
+            <button
+              onClick={handleSave}
+              className="btn-primary py-2 px-4"
+            >
+              Save Changes
             </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Main Details */}
+          <div className="glass-panel p-6 space-y-5">
+            <h2 className="text-sm font-bold text-text-primary pb-3 border-b border-border-subtle flex items-center gap-2">
+              <Building2 className="w-4.5 h-4.5 text-brand-primary" />
+              Business Details
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+              <div className="flex items-center gap-3">
+                <Globe className="w-4 h-4 text-brand-secondary" />
+                <div>
+                  <p className="text-text-muted font-bold uppercase tracking-wider text-[10px]">Timezone</p>
+                  <p className="text-sm font-semibold text-text-primary mt-0.5">{data?.timezone || 'N/A'}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Clock className="w-4 h-4 text-brand-accent" />
+                <div>
+                  <p className="text-text-muted font-bold uppercase tracking-wider text-[10px]">Hours of Operation</p>
+                  <p className="text-sm font-semibold text-text-primary mt-0.5">{data?.businessHours || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Authority Contacts */}
+          <div className="glass-panel p-6">
+            <h2 className="text-sm font-bold text-text-primary pb-3 border-b border-border-subtle mb-4 flex items-center gap-2">
+              <Users className="w-4.5 h-4.5 text-status-success" />
+              Key Contacts
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+              <div className="bg-vault-elevated/40 p-4 rounded-xl border border-border-subtle">
+                <p className="text-text-muted font-bold uppercase tracking-wider text-[9px] mb-1">Primary Contact</p>
+                <p className="font-bold text-text-primary">{getContactName(data?.primaryContactId)}</p>
+              </div>
+
+              <div className="bg-vault-elevated/40 p-4 rounded-xl border border-border-subtle">
+                <p className="text-text-muted font-bold uppercase tracking-wider text-[9px] mb-1">Emergency Contact</p>
+                <p className="font-bold text-text-primary">{getContactName(data?.emergencyContactId)}</p>
+              </div>
+
+              <div className="bg-vault-elevated/40 p-4 rounded-xl border border-border-subtle">
+                <p className="text-text-muted font-bold uppercase tracking-wider text-[9px] mb-1">Authorization Contact</p>
+                <p className="font-bold text-text-primary">{getContactName(data?.authorizationContactId)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Summary Notes */}
+          {data?.notes && (
+            <div className="glass-panel p-6">
+              <h2 className="text-sm font-bold text-text-primary pb-3 border-b border-border-subtle mb-3 flex items-center gap-2">
+                <FileText className="w-4.5 h-4.5 text-brand-accent" />
+                General Notes
+              </h2>
+              <div className="bg-vault-elevated/20 p-4 rounded-xl border border-border-subtle font-mono text-xs whitespace-pre-wrap leading-relaxed text-text-secondary">
+                {data.notes}
+              </div>
+            </div>
           )}
         </div>
-
-        {isEditingNotes ? (
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="input-field h-40 font-mono text-xs leading-relaxed"
-          />
-        ) : (
-          <div className="bg-vault-elevated/30 p-4 rounded-xl border border-border-subtle">
-            <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap font-mono">
-              {notes}
-            </p>
-          </div>
-        )}
-      </div>
-
-    </div>
+      )}
+    </RecordLayout>
   );
 }

@@ -14,5 +14,7 @@ public interface PasswordRepository extends JpaRepository<Password, UUID> {
 
     List<Password> findByOrganizationId(UUID organizationId);
 
+    Page<Password> findByOrganizationId(UUID organizationId, Pageable pageable);
+
     Page<Password> findByOrganizationIdAndNameContainingIgnoreCase(UUID organizationId, String name, Pageable pageable);
 }

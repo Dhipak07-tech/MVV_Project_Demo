@@ -20,7 +20,10 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
+import com.managemyvault.organization.search.OrganizationSearchDocument;
+import com.managemyvault.organization.search.OrganizationSearchService;
 
 /**
  * Organization REST controller.
@@ -34,6 +37,7 @@ public class OrganizationController {
 
     private final OrganizationService organizationService;
     private final OrganizationQueryService queryService;
+    private final OrganizationSearchService searchService;
 
     /**
      * List/search organizations with optional filters.
@@ -114,5 +118,16 @@ public class OrganizationController {
     @PreAuthorize("hasAnyRole('ULTRA_SUPER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<OrganizationQueryService.OrganizationStats> getStats() {
         return ResponseEntity.ok(queryService.getStats());
+    }
+
+    /**
+     * Global Elasticsearch search across organizations.
+     * Platform admins only.
+     */
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('ULTRA_SUPER_ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<List<OrganizationSearchDocument>> searchOrganizations(
+            @RequestParam String query) {
+        return ResponseEntity.ok(searchService.searchOrganizations(query));
     }
 }

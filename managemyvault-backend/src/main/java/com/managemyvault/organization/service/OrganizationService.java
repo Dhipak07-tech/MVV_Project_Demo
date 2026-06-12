@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.managemyvault.organization.search.OrganizationSearchService;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -30,6 +31,7 @@ public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationMemberRepository memberRepository;
     private final OrganizationSlugGenerator slugGenerator;
+    private final OrganizationSearchService searchService;
 
     /**
      * Create a new organization.
@@ -65,6 +67,9 @@ public class OrganizationService {
         Organization saved = organizationRepository.save(org);
         log.info("Organization created: {} ({})", saved.getName(), saved.getSlug());
 
+        // Index in Elasticsearch
+        searchService.indexOrganization(saved);
+
         return OrganizationResponse.from(saved);
     }
 
@@ -98,6 +103,10 @@ public class OrganizationService {
         enrichWithStats(saved);
 
         log.info("Organization updated: {} by user {}", saved.getName(), currentUser.getEmail());
+        
+        // Update in Elasticsearch
+        searchService.indexOrganization(saved);
+        
         return OrganizationResponse.from(saved);
     }
 
@@ -114,6 +123,9 @@ public class OrganizationService {
         org.setDeletedBy(currentUser.getId());
         organizationRepository.save(org);
         log.info("Organization archived: {} by user {}", org.getName(), currentUser.getEmail());
+
+        // Remove or update in Elasticsearch (archived organizations can be deleted from search index)
+        searchService.deleteOrganization(organizationId.toString());
     }
 
     /**
@@ -130,6 +142,10 @@ public class OrganizationService {
         org.setDeletedBy(null);
         Organization saved = organizationRepository.save(org);
         log.info("Organization restored: {} by user {}", saved.getName(), currentUser.getEmail());
+
+        // Index back in Elasticsearch
+        searchService.indexOrganization(saved);
+
         return OrganizationResponse.from(saved);
     }
 

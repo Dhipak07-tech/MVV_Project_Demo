@@ -8,6 +8,8 @@ import { authApi } from '../../../features/organizations/api/organizationApi';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from '../ThemeToggle';
+import { useDebounce } from '../../hooks/useDebounce';
+import { useGlobalSearch } from '../../../features/organizations/hooks/useOrganizations';
 
 /**
  * AppShell — Main application layout.
@@ -19,6 +21,10 @@ export default function AppShell() {
   const { user, clearAuth } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [globalQuery, setGlobalQuery] = useState('');
+  const [showResults, setShowResults] = useState(false);
+  const debouncedGlobalQuery = useDebounce(globalQuery, 300);
+  const { data: searchResults, isLoading: isSearching } = useGlobalSearch(debouncedGlobalQuery);
 
   const handleLogout = async () => {
     try {
@@ -71,14 +77,67 @@ export default function AppShell() {
           {/* Right: Search + Actions + User */}
           <div className="flex items-center gap-3">
             {/* Global search */}
-            <div className="hidden md:flex items-center gap-2 bg-vault-elevated rounded-lg px-3 py-1.5 border border-border-subtle focus-within:border-brand-primary transition-colors">
-              <Search className="w-4 h-4 text-text-muted" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="bg-transparent text-sm text-text-primary placeholder-text-muted outline-none w-48"
-              />
-              <kbd className="text-[10px] text-text-muted bg-vault-base px-1.5 py-0.5 rounded border border-border-subtle">⌘K</kbd>
+            <div className="relative hidden md:block">
+              <div className="flex items-center gap-2 bg-vault-elevated rounded-lg px-3 py-1.5 border border-border-subtle focus-within:border-brand-primary transition-colors">
+                <Search className="w-4 h-4 text-text-muted" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={globalQuery}
+                  onChange={(e) => {
+                    setGlobalQuery(e.target.value);
+                    setShowResults(true);
+                  }}
+                  onFocus={() => setShowResults(true)}
+                  className="bg-transparent text-sm text-text-primary placeholder-text-muted outline-none w-48"
+                />
+                <kbd className="text-[10px] text-text-muted bg-vault-base px-1.5 py-0.5 rounded border border-border-subtle">⌘K</kbd>
+              </div>
+
+              {/* Search Results Dropdown */}
+              <AnimatePresence>
+                {showResults && globalQuery.trim().length >= 2 && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowResults(false)} />
+                    
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 5 }}
+                      className="absolute right-0 mt-2 w-80 bg-vault-elevated border border-border-default rounded-xl shadow-lg overflow-hidden z-50 p-2"
+                    >
+                      <div className="px-3 py-2 text-xs font-semibold text-text-muted uppercase tracking-wider border-b border-border-subtle">
+                        Global Search Results
+                      </div>
+                      
+                      {isSearching ? (
+                        <div className="p-3 text-sm text-text-secondary text-center">Searching...</div>
+                      ) : !searchResults || searchResults.length === 0 ? (
+                        <div className="p-3 text-sm text-text-secondary text-center">No organizations found</div>
+                      ) : (
+                        <div className="max-h-60 overflow-y-auto py-1">
+                          {searchResults.map((org) => (
+                            <button
+                              key={org.id}
+                              onClick={() => {
+                                navigate(`/org/${org.id}/home`);
+                                setGlobalQuery('');
+                                setShowResults(false);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-vault-card flex flex-col gap-0.5 transition-colors"
+                            >
+                              <span className="font-semibold">{org.name}</span>
+                              {org.description && (
+                                <span className="text-xs text-text-muted truncate">{org.description}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Notifications */}

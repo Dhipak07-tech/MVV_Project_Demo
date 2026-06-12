@@ -1,73 +1,61 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, FileText, Edit2, Trash2, Eye, EyeOff, Save, Folder, User, Calendar, X } from 'lucide-react';
-
-interface DocumentItem {
-  id: string;
-  title: string;
-  content: string;
-  category: string;
-  updatedBy: string;
-  updatedAt: string;
-}
-
-const DEFAULT_DOCUMENTS: DocumentItem[] = [
-  { id: '1', title: 'Skynet Integration Guidelines', content: '# Skynet Integration System\nThis document outlines how to safely bridge our internal firewall systems with Skynet cognitive nodes.\n\n## Network Mapping\n* Core mainframe: 10.0.1.5\n* Security node: port 8443\n\n## Security Precautions\nEnsure virtual threads isolation is enabled on the backend gateway.', category: 'Standards', updatedBy: 'Miles Dyson', updatedAt: '2026-06-11T12:00:00Z' },
-  { id: '2', title: 'Building Access Policy', content: '# Building Access & Lockup\nInstructions for entry fobs and server rooms.\n\n1. Swipe key fob at ground floor lobby.\n2. Server room key code: 9931.', category: 'Operations', updatedBy: 'Sarah Connor', updatedAt: '2026-06-10T14:30:00Z' }
-];
+import { Plus, Search, FileText, Edit2, Trash2, Save, Folder, User, Calendar, Loader2 } from 'lucide-react';
+import { useDocuments, useCreateDocument, useUpdateDocument, useDeleteDocument } from '../../../hooks/useDocs';
+import { type DocumentItem } from '../../../api/docsApi';
 
 export default function DocumentsPage() {
   const { orgId } = useParams<{ orgId: string }>();
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('All');
   const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null);
-  
+
   // Editor State
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('General');
 
-  // Load from local storage
-  useEffect(() => {
-    const stored = localStorage.getItem(`mmv_documents_${orgId}`);
-    if (stored) {
-      setDocuments(JSON.parse(stored));
-    } else {
-      setDocuments(DEFAULT_DOCUMENTS);
-      localStorage.setItem(`mmv_documents_${orgId}`, JSON.stringify(DEFAULT_DOCUMENTS));
-    }
-  }, [orgId]);
+  // React Query Hooks
+  const { data: pageData, isLoading } = useDocuments(orgId || '', filterCat, search);
+  const createMutation = useCreateDocument();
+  const updateMutation = useUpdateDocument();
+  const deleteMutation = useDeleteDocument();
 
-  // Save helper
-  const saveDocuments = (updated: DocumentItem[]) => {
-    setDocuments(updated);
-    localStorage.setItem(`mmv_documents_${orgId}`, JSON.stringify(updated));
-  };
+  const documents = pageData?.content || [];
+
+  // Update selected doc if it changes in database
+  useEffect(() => {
+    if (selectedDoc) {
+      const match = documents.find((d) => d.id === selectedDoc.id);
+      if (match) {
+        setSelectedDoc(match);
+      }
+    }
+  }, [documents, selectedDoc]);
 
   const handleSelectDoc = (doc: DocumentItem) => {
     setSelectedDoc(doc);
     setIsEditing(false);
   };
 
-  const handleOpenAdd = () => {
-    const newDoc: DocumentItem = {
-      id: crypto.randomUUID(),
+  const handleOpenAdd = async () => {
+    if (!orgId) return;
+    const newDoc = {
       title: 'Untitled Document',
       content: '# New Document\nStart editing here...',
       category: 'General',
-      updatedBy: 'Platform User',
-      updatedAt: new Date().toISOString()
     };
-    const updated = [...documents, newDoc];
-    saveDocuments(updated);
-    setSelectedDoc(newDoc);
-    setEditTitle(newDoc.title);
-    setEditContent(newDoc.content);
-    setEditCategory(newDoc.category);
-    setIsEditing(true);
+    try {
+      const saved = await createMutation.mutateAsync({ orgId, doc: newDoc });
+      setSelectedDoc(saved);
+      setEditTitle(saved.title);
+      setEditContent(saved.content);
+      setEditCategory(saved.category);
+      setIsEditing(true);
+    } catch (err) {
+      console.error('Failed to create document', err);
+    }
   };
 
   const handleEditStart = () => {
@@ -78,42 +66,42 @@ export default function DocumentsPage() {
     setIsEditing(true);
   };
 
-  const handleSave = () => {
-    if (!selectedDoc) return;
-    const updatedDoc: DocumentItem = {
-      ...selectedDoc,
-      title: editTitle,
-      content: editContent,
-      category: editCategory,
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'Platform Administrator'
-    };
-    const updated = documents.map(d => d.id === selectedDoc.id ? updatedDoc : d);
-    saveDocuments(updated);
-    setSelectedDoc(updatedDoc);
-    setIsEditing(false);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this document?')) {
-      const updated = documents.filter(d => d.id !== id);
-      saveDocuments(updated);
-      setSelectedDoc(null);
+  const handleSave = async () => {
+    if (!selectedDoc || !orgId) return;
+    try {
+      const updated = await updateMutation.mutateAsync({
+        orgId,
+        id: selectedDoc.id,
+        doc: {
+          title: editTitle,
+          content: editContent,
+          category: editCategory,
+        },
+      });
+      setSelectedDoc(updated);
       setIsEditing(false);
+    } catch (err) {
+      console.error('Failed to save document', err);
     }
   };
 
-  const categories = ['All', ...Array.from(new Set(documents.map(d => d.category)))];
+  const handleDelete = async (id: string) => {
+    if (!orgId) return;
+    if (confirm('Are you sure you want to delete this document?')) {
+      try {
+        await deleteMutation.mutateAsync({ orgId, id });
+        setSelectedDoc(null);
+        setIsEditing(false);
+      } catch (err) {
+        console.error('Failed to delete document', err);
+      }
+    }
+  };
 
-  const filtered = documents.filter(d => {
-    const matchesSearch = d.title.toLowerCase().includes(search.toLowerCase()) || d.content.toLowerCase().includes(search.toLowerCase());
-    const matchesCat = filterCat === 'All' || d.category === filterCat;
-    return matchesSearch && matchesCat;
-  });
+  const categories = ['All', 'Standards', 'Operations', 'General', 'Procedures', 'Reference'];
 
   return (
     <div className="p-6 space-y-6 bg-vault-base text-text-primary transition-colors duration-200">
-      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-5">
         <div>
@@ -128,14 +116,17 @@ export default function DocumentsPage() {
           </p>
         </div>
 
-        <button onClick={handleOpenAdd} className="btn-primary">
-          <Plus className="w-4 h-4 mr-1.5" />
+        <button onClick={handleOpenAdd} disabled={createMutation.isPending} className="btn-primary flex items-center gap-1.5">
+          {createMutation.isPending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
           New Document
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        
         {/* Left Side: Document list & categories */}
         <div className="space-y-4 lg:col-span-1">
           <div className="relative">
@@ -172,26 +163,34 @@ export default function DocumentsPage() {
 
           {/* List */}
           <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-            {filtered.map((doc) => (
-              <button
-                key={doc.id}
-                onClick={() => handleSelectDoc(doc)}
-                className={`w-full text-left p-3.5 rounded-xl border transition-all ${
-                  selectedDoc?.id === doc.id
-                    ? 'bg-vault-card border-brand-primary shadow-glow-blue'
-                    : 'bg-vault-card border-border-subtle hover:border-border-default'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-brand-primary flex-shrink-0" />
-                  <span className="text-xs font-bold text-text-primary truncate">{doc.title}</span>
-                </div>
-                <div className="flex items-center justify-between text-[9px] text-text-muted mt-2">
-                  <span className="truncate">{doc.category}</span>
-                  <span>{new Date(doc.updatedAt).toLocaleDateString()}</span>
-                </div>
-              </button>
-            ))}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+              </div>
+            ) : documents.length === 0 ? (
+              <p className="text-center py-8 text-xs text-text-muted">No documents found.</p>
+            ) : (
+              documents.map((doc) => (
+                <button
+                  key={doc.id}
+                  onClick={() => handleSelectDoc(doc)}
+                  className={`w-full text-left p-3.5 rounded-xl border transition-all ${
+                    selectedDoc?.id === doc.id
+                      ? 'bg-vault-card border-brand-primary shadow-glow-blue'
+                      : 'bg-vault-card border-border-subtle hover:border-border-default'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-brand-primary flex-shrink-0" />
+                    <span className="text-xs font-bold text-text-primary truncate">{doc.title}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] text-text-muted mt-2">
+                    <span className="truncate">{doc.category}</span>
+                    <span>{new Date(doc.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </div>
 
@@ -199,7 +198,6 @@ export default function DocumentsPage() {
         <div className="lg:col-span-3">
           {selectedDoc ? (
             <div className="glass-panel p-6 space-y-5 min-h-[500px] flex flex-col justify-between">
-              
               {/* Document Header details */}
               <div>
                 <div className="flex justify-between items-start border-b border-border-subtle pb-4 mb-4">
@@ -227,7 +225,7 @@ export default function DocumentsPage() {
                       <h2 className="text-base font-bold text-text-primary">{selectedDoc.title}</h2>
                       <div className="flex items-center gap-4 text-[10px] text-text-muted mt-1.5">
                         <span className="flex items-center gap-1">
-                          <User className="w-3.5 h-3.5" /> {selectedDoc.updatedBy}
+                          <User className="w-3.5 h-3.5" /> Platform User
                         </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5" /> {new Date(selectedDoc.updatedAt).toLocaleDateString()}
@@ -242,8 +240,13 @@ export default function DocumentsPage() {
                   <div className="flex items-center gap-1.5 ml-4">
                     {isEditing ? (
                       <>
-                        <button onClick={handleSave} className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1">
-                          <Save className="w-3.5 h-3.5" /> Save
+                        <button onClick={handleSave} disabled={updateMutation.isPending} className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1">
+                          {updateMutation.isPending ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Save className="w-3.5 h-3.5" />
+                          )}
+                          Save
                         </button>
                         <button onClick={() => setIsEditing(false)} className="btn-secondary py-1.5 px-3 text-xs">
                           Cancel
@@ -254,8 +257,12 @@ export default function DocumentsPage() {
                         <button onClick={handleEditStart} className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1">
                           <Edit2 className="w-3.5 h-3.5" /> Edit
                         </button>
-                        <button onClick={() => handleDelete(selectedDoc.id)} className="p-1.5 text-text-muted hover:text-status-danger transition-colors">
-                          <Trash2 className="w-4 h-4" />
+                        <button onClick={() => handleDelete(selectedDoc.id)} disabled={deleteMutation.isPending} className="p-1.5 text-text-muted hover:text-status-danger transition-colors">
+                          {deleteMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-status-danger" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
                         </button>
                       </>
                     )}
@@ -284,7 +291,6 @@ export default function DocumentsPage() {
                 <span>Document UUID: {selectedDoc.id}</span>
                 <span>ManageMyVault Documentation Engine</span>
               </div>
-
             </div>
           ) : (
             <div className="glass-panel p-12 text-center flex flex-col items-center justify-center min-h-[500px]">
@@ -296,7 +302,6 @@ export default function DocumentsPage() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

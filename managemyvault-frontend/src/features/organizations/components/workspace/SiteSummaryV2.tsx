@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useOrganization } from '../../hooks/useOrganizations';
-import { ShieldAlert, Sparkles, LayoutGrid, CheckCircle } from 'lucide-react';
+import { Sparkles, LayoutGrid, CheckCircle } from 'lucide-react';
 
 export default function SiteSummaryV2() {
   const { orgId } = useParams<{ orgId: string }>();

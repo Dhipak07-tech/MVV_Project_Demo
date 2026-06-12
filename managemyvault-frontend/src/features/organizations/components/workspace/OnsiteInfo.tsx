@@ -1,151 +1,289 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Landmark, ShieldAlert, Cpu, FileText, Save } from 'lucide-react';
+import axios from 'axios';
+import { Landmark, ShieldAlert, Cpu, FileText, Wifi, Key, Save, AlertCircle } from 'lucide-react';
+import { useOrganization } from '../../hooks/useOrganizations';
+import RecordLayout from '../records/RecordLayout';
+import { API_URL } from '../../../../config/constants';
 
 interface OnsiteData {
-  parking: string;
-  officeAccess: string;
+  organizationId: string;
+  parkingInstructions: string;
+  buildingAccess: string;
   serverRoomAccess: string;
-  siteNotes: string;
+  wifiInformation: string;
+  keyLocations: string;
+  notes: string;
+  updatedAt?: string;
 }
-
-const DEFAULT_DATA: OnsiteData = {
-  parking: 'Visitor parking is located in the front lot (bays 10-18). Parking permits must be requested at the reception desk for visits exceeding 2 hours. Parking validation is not required.',
-  officeAccess: 'Reception is open Monday to Friday, 8:00 AM - 5:00 PM. Visitors must sign in via the iPad registry and receive a color-coded temporary badge. Escort required in core spaces.',
-  serverRoomAccess: 'The server room is located on Floor 2, Room 204. Access requires double authentication: 1. Swipe tech fob at Floor 2 hallway gate. 2. Lock box 204A next to the door (code is 9980) contains the physical master key. Rack key is located inside drawer A3.',
-  siteNotes: 'Building operations manager is Miles Dyson. Emergency fire shutoff switch is located near the server room rear door. Power distribution units (PDUs) are managed via IP 10.0.1.15.',
-};
 
 export default function OnsiteInfo() {
   const { orgId } = useParams<{ orgId: string }>();
+  const { data: org, isLoading: isOrgLoading } = useOrganization(orgId);
+
+  // States
   const [data, setData] = useState<OnsiteData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load from local storage
-  useEffect(() => {
-    const stored = localStorage.getItem(`mmv_onsite_info_${orgId}`);
-    if (stored) {
-      setData(JSON.parse(stored));
-    } else {
-      setData(DEFAULT_DATA);
-      localStorage.setItem(`mmv_onsite_info_${orgId}`, JSON.stringify(DEFAULT_DATA));
+  // Form fields
+  const [parkingInstructions, setParkingInstructions] = useState('');
+  const [buildingAccess, setBuildingAccess] = useState('');
+  const [serverRoomAccess, setServerRoomAccess] = useState('');
+  const [wifiInformation, setWifiInformation] = useState('');
+  const [keyLocations, setKeyLocations] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const token = localStorage.getItem('accessToken');
+  const headers = { Authorization: `Bearer ${token}` };
+
+  const fetchOnsiteInfo = async () => {
+    if (!orgId) return;
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/onsite-information`, {
+        params: { organizationId: orgId },
+        headers
+      });
+      setData(response.data);
+      setError(null);
+    } catch (e) {
+      setError('Failed to load onsite information.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [orgId]);
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!data) return;
-
-    localStorage.setItem(`mmv_onsite_info_${orgId}`, JSON.stringify(data));
-    setIsEditing(false);
-    setSaveStatus('Onsite data updated successfully!');
-    setTimeout(() => setSaveStatus(null), 3000);
   };
 
-  if (!data) return null;
+  useEffect(() => {
+    fetchOnsiteInfo();
+  }, [orgId]);
+
+  // Sync form inputs when editing toggled or data loaded
+  useEffect(() => {
+    if (data) {
+      setParkingInstructions(data.parkingInstructions || '');
+      setBuildingAccess(data.buildingAccess || '');
+      setServerRoomAccess(data.serverRoomAccess || '');
+      setWifiInformation(data.wifiInformation || '');
+      setKeyLocations(data.keyLocations || '');
+      setNotes(data.notes || '');
+    }
+  }, [data, isEditing]);
+
+  const handleSave = async () => {
+    if (!orgId) return;
+    const payload = {
+      organizationId: orgId,
+      parkingInstructions,
+      buildingAccess,
+      serverRoomAccess,
+      wifiInformation,
+      keyLocations,
+      notes
+    };
+
+    try {
+      const response = await axios.post(`${API_URL}/onsite-information`, payload, { headers });
+      setData(response.data);
+      setIsEditing(false);
+    } catch (e) {
+      console.error('Failed to save onsite info:', e);
+      alert('Failed to save onsite information.');
+    }
+  };
+
+  if (isOrgLoading || isLoading) {
+    return (
+      <div className="p-8 space-y-6">
+        <div className="h-8 w-64 bg-vault-elevated animate-pulse rounded-lg" />
+        <div className="h-60 bg-vault-elevated animate-pulse rounded-xl" />
+      </div>
+    );
+  }
+
+  if (!org) {
+    return (
+      <div className="p-8 text-center text-text-secondary">
+        <AlertCircle className="w-12 h-12 mx-auto text-status-warning mb-4" />
+        <p className="text-lg font-medium">Organization not found</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6 bg-vault-base text-text-primary transition-colors duration-200">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-5">
-        <div>
-          <span className="text-xs font-semibold text-brand-primary tracking-wider uppercase">
-            Client Contact
-          </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-1">
-            Onsite Information
-          </h1>
-          <p className="text-sm text-text-secondary mt-0.5">
-            Configure visitor parking, office access rules, and server room key locations.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {saveStatus && (
-            <span className="text-xs text-status-success font-semibold">{saveStatus}</span>
-          )}
-          {isEditing ? (
-            <button onClick={handleSave} className="btn-primary flex items-center gap-1.5">
-              <Save className="w-4 h-4" /> Save Onsite Info
-            </button>
-          ) : (
-            <button onClick={() => setIsEditing(true)} className="btn-secondary">
-              Edit Information
-            </button>
-          )}
-        </div>
-      </div>
-
-      <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Parking details */}
-        <div className="glass-panel p-6 space-y-4">
-          <h2 className="text-base font-bold text-text-primary flex items-center gap-2 pb-3 border-b border-border-subtle">
+    <RecordLayout
+      breadcrumbs={[org.name, 'Client Contact', 'Onsite Information']}
+      title="Onsite Information"
+      type="OnsiteInformation"
+      organizationId={orgId || ''}
+      entityId={orgId || 'onsite-info-id'}
+      lastUpdated={data?.updatedAt}
+      updatedBy="System Administrator"
+      onEdit={() => setIsEditing(!isEditing)}
+      onShareLink={() => {
+        navigator.clipboard.writeText(window.location.href);
+        alert('Copied link to clipboard!');
+      }}
+    >
+      {isEditing ? (
+        <div className="glass-panel p-6 space-y-5 text-xs">
+          <h2 className="text-sm font-bold text-text-primary pb-2 border-b border-border-subtle flex items-center gap-2">
             <Landmark className="w-4.5 h-4.5 text-brand-primary" />
-            Parking Instructions
+            Edit Onsite Information
           </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Wifi Information</label>
+              <input
+                type="text"
+                value={wifiInformation}
+                onChange={(e) => setWifiInformation(e.target.value)}
+                className="input-field py-2 px-3"
+                placeholder="SSID: MMV_Guest, Pass:..."
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Key Locations</label>
+              <input
+                type="text"
+                value={keyLocations}
+                onChange={(e) => setKeyLocations(e.target.value)}
+                className="input-field py-2 px-3"
+                placeholder="e.g. Master key in Safe #2"
+              />
+            </div>
+          </div>
+
           <div>
+            <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Parking Instructions</label>
             <textarea
-              disabled={!isEditing}
-              value={data.parking}
-              onChange={(e) => setData({ ...data, parking: e.target.value })}
-              className="input-field h-36 resize-none disabled:opacity-75 disabled:cursor-not-allowed text-xs leading-relaxed"
+              value={parkingInstructions}
+              onChange={(e) => setParkingInstructions(e.target.value)}
+              className="input-field h-24 leading-relaxed"
+              placeholder="e.g. Visitors bays 10-18..."
             />
           </div>
-        </div>
 
-        {/* Office Access details */}
-        <div className="glass-panel p-6 space-y-4">
-          <h2 className="text-base font-bold text-text-primary flex items-center gap-2 pb-3 border-b border-border-subtle">
-            <ShieldAlert className="w-4.5 h-4.5 text-brand-secondary" />
-            Office Access Rules
-          </h2>
           <div>
+            <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Building Access Instructions</label>
             <textarea
-              disabled={!isEditing}
-              value={data.officeAccess}
-              onChange={(e) => setData({ ...data, officeAccess: e.target.value })}
-              className="input-field h-36 resize-none disabled:opacity-75 disabled:cursor-not-allowed text-xs leading-relaxed"
+              value={buildingAccess}
+              onChange={(e) => setBuildingAccess(e.target.value)}
+              className="input-field h-24 leading-relaxed"
+              placeholder="Fob entry, registration rules..."
             />
           </div>
-        </div>
 
-        {/* Server Room Access details */}
-        <div className="glass-panel p-6 space-y-4">
-          <h2 className="text-base font-bold text-text-primary flex items-center gap-2 pb-3 border-b border-border-subtle">
-            <Cpu className="w-4.5 h-4.5 text-status-success" />
-            Server Room Access
-          </h2>
           <div>
+            <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Server Room Access Instructions</label>
             <textarea
-              disabled={!isEditing}
-              value={data.serverRoomAccess}
-              onChange={(e) => setData({ ...data, serverRoomAccess: e.target.value })}
-              className="input-field h-36 resize-none disabled:opacity-75 disabled:cursor-not-allowed text-xs leading-relaxed font-mono"
+              value={serverRoomAccess}
+              onChange={(e) => setServerRoomAccess(e.target.value)}
+              className="input-field h-24 font-mono leading-relaxed"
+              placeholder="Keys, dual authentication details..."
             />
           </div>
-        </div>
 
-        {/* Site Notes details */}
-        <div className="glass-panel p-6 space-y-4">
-          <h2 className="text-base font-bold text-text-primary flex items-center gap-2 pb-3 border-b border-border-subtle">
-            <FileText className="w-4.5 h-4.5 text-brand-accent" />
-            General Site Notes
-          </h2>
           <div>
+            <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">Additional Notes</label>
             <textarea
-              disabled={!isEditing}
-              value={data.siteNotes}
-              onChange={(e) => setData({ ...data, siteNotes: e.target.value })}
-              className="input-field h-36 resize-none disabled:opacity-75 disabled:cursor-not-allowed text-xs leading-relaxed"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="input-field h-24 leading-relaxed"
+              placeholder="Other onsite specifications..."
             />
           </div>
-        </div>
 
-      </form>
-    </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => setIsEditing(false)}
+              className="btn-secondary py-2 px-4"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="btn-primary py-2 px-4"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Quick Details */}
+          <div className="glass-panel p-6 space-y-4">
+            <h2 className="text-sm font-bold text-text-primary pb-3 border-b border-border-subtle flex items-center gap-2">
+              <Wifi className="w-4.5 h-4.5 text-brand-primary" />
+              Wifi & Keys
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <p className="text-text-muted font-bold uppercase text-[9px]">Wifi Information</p>
+                <p className="font-semibold text-text-primary mt-1 font-mono">{data?.wifiInformation || 'Not Configured'}</p>
+              </div>
+              <div>
+                <p className="text-text-muted font-bold uppercase text-[9px]">Key Locations</p>
+                <p className="font-semibold text-text-primary mt-1">{data?.keyLocations || 'Not Configured'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Parking */}
+          {data?.parkingInstructions && (
+            <div className="glass-panel p-6">
+              <h2 className="text-sm font-bold text-text-primary pb-3 border-b border-border-subtle mb-3 flex items-center gap-2">
+                <Landmark className="w-4.5 h-4.5 text-brand-secondary" />
+                Parking Instructions
+              </h2>
+              <div className="bg-vault-elevated/20 p-4 rounded-xl border border-border-subtle text-xs whitespace-pre-wrap leading-relaxed text-text-secondary">
+                {data.parkingInstructions}
+              </div>
+            </div>
+          )}
+
+          {/* Building Access */}
+          {data?.buildingAccess && (
+            <div className="glass-panel p-6">
+              <h2 className="text-sm font-bold text-text-primary pb-3 border-b border-border-subtle mb-3 flex items-center gap-2">
+                <ShieldAlert className="w-4.5 h-4.5 text-brand-accent" />
+                Building Access
+              </h2>
+              <div className="bg-vault-elevated/20 p-4 rounded-xl border border-border-subtle text-xs whitespace-pre-wrap leading-relaxed text-text-secondary">
+                {data.buildingAccess}
+              </div>
+            </div>
+          )}
+
+          {/* Server Room Access */}
+          {data?.serverRoomAccess && (
+            <div className="glass-panel p-6">
+              <h2 className="text-sm font-bold text-text-primary pb-3 border-b border-border-subtle mb-3 flex items-center gap-2">
+                <Cpu className="w-4.5 h-4.5 text-status-success" />
+                Server Room Access
+              </h2>
+              <div className="bg-vault-elevated/20 p-4 rounded-xl border border-border-subtle font-mono text-xs whitespace-pre-wrap leading-relaxed text-text-secondary">
+                {data.serverRoomAccess}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {data?.notes && (
+            <div className="glass-panel p-6">
+              <h2 className="text-sm font-bold text-text-primary pb-3 border-b border-border-subtle mb-3">
+                Additional Notes
+              </h2>
+              <div className="bg-vault-elevated/20 p-4 rounded-xl border border-border-subtle text-xs whitespace-pre-wrap leading-relaxed text-text-secondary">
+                {data.notes}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </RecordLayout>
   );
 }

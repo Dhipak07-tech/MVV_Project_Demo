@@ -14,6 +14,8 @@ public interface ExceptionEntryRepository extends JpaRepository<ExceptionEntry, 
 
     List<ExceptionEntry> findByOrganizationIdAndType(UUID organizationId, String type);
 
+    Page<ExceptionEntry> findByOrganizationIdAndType(UUID organizationId, String type, Pageable pageable);
+
     Page<ExceptionEntry> findByOrganizationIdAndTypeAndTitleContainingIgnoreCase(
             UUID organizationId, String type, String title, Pageable pageable);
 }

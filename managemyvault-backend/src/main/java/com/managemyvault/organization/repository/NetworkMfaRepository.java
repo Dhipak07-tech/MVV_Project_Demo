@@ -14,6 +14,8 @@ public interface NetworkMfaRepository extends JpaRepository<NetworkMfa, UUID> {
 
     List<NetworkMfa> findByOrganizationIdAndType(UUID organizationId, String type);
 
+    Page<NetworkMfa> findByOrganizationIdAndType(UUID organizationId, String type, Pageable pageable);
+
     Page<NetworkMfa> findByOrganizationIdAndTypeAndTitleContainingIgnoreCase(
             UUID organizationId, String type, String title, Pageable pageable);
 }

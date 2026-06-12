@@ -31,9 +31,6 @@ public class Document extends AuditableEntity {
     @Column(nullable = false, length = 255)
     private String category;
 
-    @Column(name = "updated_by", length = 255)
-    private String updatedByText; // Custom text tracking since AuditableEntity already tracks updatedBy UUID
-
     @Version
     private Long version;
 }

@@ -1,8 +1,8 @@
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Shield, Key, FileText, Users, MapPin, AlertTriangle,
-  Activity, CheckCircle, Database, ShieldAlert, Cpu, Network
+  Key, FileText, Users, MapPin, AlertTriangle,
+  Activity, Database, ShieldAlert, Cpu, Network
 } from 'lucide-react';
 import { useOrganization } from '../hooks/useOrganizations';
 import HealthScoreRing from './HealthScoreRing';
@@ -37,6 +37,8 @@ export default function WorkspaceHome() {
     );
   }
 
+  const healthScore = org.healthScore ?? 100;
+
   // Pre-configured mock lists based on organization stats
   const mockAssets = [
     { name: 'Core Router Switch', type: 'Switch', ip: '10.0.1.1' },
@@ -53,7 +55,7 @@ export default function WorkspaceHome() {
   ];
 
   const mockAlerts = [
-    org.healthScore < 60
+    healthScore < 60
       ? { type: 'critical', text: ' Skynet Network Firewall has expired support license', date: 'Immediate Action Required' }
       : { type: 'warning', text: '3 shared credentials have not been rotated in 90+ days', date: '3 days ago' },
     { type: 'warning', text: 'Primary Domain SSL certificate expires in 14 days', date: '1 day ago' },
@@ -160,10 +162,10 @@ export default function WorkspaceHome() {
         <div className="glass-panel p-6 flex flex-col items-center justify-center text-center">
           <h2 className="text-base font-semibold text-text-primary self-start mb-6">Documentation Health</h2>
           <div className="w-40 h-40 flex items-center justify-center mb-6">
-            <HealthScoreRing score={org.healthScore} size={150} strokeWidth={12} showText />
+            <HealthScoreRing score={healthScore} size={150} strokeWidth={12} />
           </div>
           <h3 className="text-sm font-semibold text-text-primary mb-1">
-            {org.healthScore >= 80 ? 'Excellent Coverage' : org.healthScore >= 50 ? 'Needs Attention' : 'Critical Gaps'}
+            {healthScore >= 80 ? 'Excellent Coverage' : healthScore >= 50 ? 'Needs Attention' : 'Critical Gaps'}
           </h3>
           <p className="text-xs text-text-muted max-w-[200px] leading-relaxed">
             Overall health score tracks completeness of configurations, passwords, and site notes.

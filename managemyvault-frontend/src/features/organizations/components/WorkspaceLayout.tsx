@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown, ChevronRight, Home, Users, FileText, Cpu, Network,
-  Briefcase, CloudLightning, HelpCircle, ArrowLeft, Building, ShieldCheck
+  Briefcase, CloudLightning, HelpCircle, ArrowLeft, ShieldCheck
 } from 'lucide-react';
 import { useOrganization } from '../hooks/useOrganizations';
 import { useAuthStore } from '../store/organizationStore';
@@ -25,7 +25,7 @@ export default function WorkspaceLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { data: org, isLoading } = useOrganization(orgId);
+  const { data: org } = useOrganization(orgId);
 
   // Accordion state for sidebar sections
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({

@@ -77,3 +77,15 @@ export function useArchiveOrganization() {
     },
   });
 }
+
+/**
+ * Hook for global search across organizations using Elasticsearch.
+ */
+export function useGlobalSearch(query: string) {
+  return useQuery({
+    queryKey: ['global-search', query],
+    queryFn: () => organizationApi.globalSearch(query),
+    enabled: query.length >= 2,
+    staleTime: 1000 * 10,
+  });
+}

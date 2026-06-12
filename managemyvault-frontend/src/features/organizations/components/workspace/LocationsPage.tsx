@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, MapPin, Edit2, Trash2, Home, Landmark, ShieldCheck, X } from 'lucide-react';
+import { Plus, Search, MapPin, Edit2, Trash2, Landmark, X } from 'lucide-react';
 
 interface LocationItem {
   id: string;

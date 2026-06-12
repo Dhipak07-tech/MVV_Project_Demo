@@ -2,6 +2,7 @@ package com.managemyvault.common.config;
 
 import com.managemyvault.common.security.CurrentUserArgumentResolver;
 import com.managemyvault.common.security.JwtAuthenticationFilter;
+import com.managemyvault.common.security.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -39,6 +40,7 @@ import java.util.List;
 public class SecurityConfig implements WebMvcConfigurer {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final CurrentUserArgumentResolver currentUserArgumentResolver;
 
     @Value("${app.cors.allowed-origins}")
@@ -61,7 +63,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                         // All other requests require authentication
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

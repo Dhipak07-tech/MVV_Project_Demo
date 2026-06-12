@@ -1,25 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, FileText, CheckCircle, ShieldAlert, GitBranch, RefreshCw, Save, Trash2, X } from 'lucide-react';
-
-interface ExceptionItem {
-  id: string;
-  title: string;
-  type: 'Standards' | 'Contract' | 'RFC' | 'Change';
-  status: 'Approved' | 'Pending' | 'Draft' | 'Expired';
-  justification: string;
-  reviewer: string;
-  dueDate: string;
-  priority?: 'Low' | 'Medium' | 'High' | 'Critical';
-}
-
-const DEFAULT_EXCEPTIONS: ExceptionItem[] = [
-  { id: '1', title: 'TLS 1.1 Support for Legacy Scanner', type: 'Standards', status: 'Approved', justification: 'Required for warehouse scanner barcode integration. Hardware upgrade planned Q4.', reviewer: 'Security Board', dueDate: '2026-12-31' },
-  { id: '2', title: '24/7 SLA Exemption for Branch Office', type: 'Contract', status: 'Approved', justification: 'Branch office hours are limited. Remote power management active.', reviewer: 'Operations Director', dueDate: '2027-06-30' },
-  { id: '3', title: 'Upgrade Core Database Server to Postgres 15', type: 'RFC', status: 'Pending', justification: 'Performance optimization and compatibility patches.', reviewer: 'Database Lead', dueDate: '2026-07-15', priority: 'High' },
-  { id: '4', title: 'Rotated AD Domain Controller Master Key', type: 'Change', status: 'Approved', justification: 'Compliance security rotation cycle.', reviewer: 'Domain Controller Admin', dueDate: '2026-06-12' }
-];
+import { Plus, Search, FileText, ShieldAlert, GitBranch, RefreshCw, Trash2, X, Loader2 } from 'lucide-react';
+import { useExceptions, useCreateException, useDeleteException } from '../../../hooks/useDocs';
+import { type ExceptionItem } from '../../../api/docsApi';
 
 interface ExceptionsLogProps {
   mode: 'standards' | 'contract' | 'rfc' | 'change';
@@ -27,7 +11,6 @@ interface ExceptionsLogProps {
 
 export default function ExceptionsLog({ mode }: ExceptionsLogProps) {
   const { orgId } = useParams<{ orgId: string }>();
-  const [items, setItems] = useState<ExceptionItem[]>([]);
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
@@ -41,20 +24,21 @@ export default function ExceptionsLog({ mode }: ExceptionsLogProps) {
     priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   });
 
-  useEffect(() => {
-    const stored = localStorage.getItem(`mmv_exceptions_${orgId}`);
-    if (stored) {
-      setItems(JSON.parse(stored));
-    } else {
-      setItems(DEFAULT_EXCEPTIONS);
-      localStorage.setItem(`mmv_exceptions_${orgId}`, JSON.stringify(DEFAULT_EXCEPTIONS));
-    }
-  }, [orgId]);
-
-  const saveItems = (updated: ExceptionItem[]) => {
-    setItems(updated);
-    localStorage.setItem(`mmv_exceptions_${orgId}`, JSON.stringify(updated));
+  const typeMap: Record<string, string> = {
+    standards: 'Standards',
+    contract: 'Contract',
+    rfc: 'RFC',
+    change: 'Change'
   };
+
+  const dbType = typeMap[mode] || 'Standards';
+
+  // React Query Hooks
+  const { data: pageData, isLoading } = useExceptions(orgId || '', dbType, search);
+  const createMutation = useCreateException();
+  const deleteMutation = useDeleteException();
+
+  const items = pageData?.content || [];
 
   const handleOpenAdd = () => {
     setForm({
@@ -68,40 +52,40 @@ export default function ExceptionsLog({ mode }: ExceptionsLogProps) {
     setIsOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.justification) return;
+    if (!form.title || !form.justification || !orgId) return;
 
-    const typeMap = {
-      standards: 'Standards',
-      contract: 'Contract',
-      rfc: 'RFC',
-      change: 'Change'
-    } as const;
-
-    const newItem: ExceptionItem = {
-      id: crypto.randomUUID(),
-      title: form.title,
-      type: typeMap[mode],
-      status: form.status,
-      justification: form.justification,
-      reviewer: form.reviewer || 'Self-Registered',
-      dueDate: form.dueDate,
-      priority: mode === 'rfc' ? form.priority : undefined
-    };
-
-    saveItems([...items, newItem]);
-    setIsOpen(false);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to remove this log entry?')) {
-      const updated = items.filter(item => item.id !== id);
-      saveItems(updated);
+    try {
+      await createMutation.mutateAsync({
+        orgId,
+        entry: {
+          title: form.title,
+          type: dbType,
+          status: form.status,
+          justification: form.justification,
+          reviewer: form.reviewer || 'Self-Registered',
+          dueDate: form.dueDate,
+          priority: mode === 'rfc' ? form.priority : undefined
+        }
+      });
+      setIsOpen(false);
+    } catch (err) {
+      console.error('Failed to create exception entry', err);
     }
   };
 
-  // Map modes
+  const handleDelete = async (id: string) => {
+    if (!orgId) return;
+    if (confirm('Are you sure you want to remove this log entry?')) {
+      try {
+        await deleteMutation.mutateAsync({ orgId, id, type: dbType });
+      } catch (err) {
+        console.error('Failed to delete exception entry', err);
+      }
+    }
+  };
+
   const modeTitle = {
     standards: 'Standards Exceptions',
     contract: 'Contract Exceptions',
@@ -116,24 +100,8 @@ export default function ExceptionsLog({ mode }: ExceptionsLogProps) {
     change: 'Audit trail of recent configuration edits and server updates.'
   }[mode];
 
-  const typeFilter = {
-    standards: 'Standards',
-    contract: 'Contract',
-    rfc: 'RFC',
-    change: 'Change'
-  }[mode];
-
-  const filtered = items
-    .filter(item => item.type === typeFilter)
-    .filter(item =>
-      item.title.toLowerCase().includes(search.toLowerCase()) ||
-      item.justification.toLowerCase().includes(search.toLowerCase()) ||
-      item.reviewer.toLowerCase().includes(search.toLowerCase())
-    );
-
   return (
     <div className="p-6 space-y-6 bg-vault-base text-text-primary transition-colors duration-200">
-      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-5">
         <div>
@@ -168,8 +136,12 @@ export default function ExceptionsLog({ mode }: ExceptionsLogProps) {
 
       {/* Log Items List */}
       <div className="space-y-4">
-        {filtered.length > 0 ? (
-          filtered.map((item) => (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+          </div>
+        ) : items.length > 0 ? (
+          items.map((item) => (
             <div key={item.id} className="glass-panel p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2.5">
@@ -198,97 +170,99 @@ export default function ExceptionsLog({ mode }: ExceptionsLogProps) {
                 <div className="flex flex-wrap items-center gap-4 text-[10px] text-text-muted">
                   <span>Authorizer/Reviewer: <strong className="text-text-secondary">{item.reviewer}</strong></span>
                   <span>Date/Due: <strong className="text-text-secondary">{item.dueDate}</strong></span>
-                  <span>ID: <strong className="text-text-secondary font-mono">{item.id.slice(0, 8)}</strong></span>
+                  <span>Status: 
+                    <strong className={`ml-1 px-1.5 py-0.5 rounded text-[8px] uppercase ${
+                      item.status === 'Approved' ? 'bg-status-success/15 text-status-success' :
+                      item.status === 'Pending' ? 'bg-status-warning/15 text-status-warning' :
+                      'bg-vault-elevated text-text-muted'
+                    }`}>
+                      {item.status}
+                    </strong>
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className={`badge ${
-                  item.status === 'Approved' ? 'badge-success' : item.status === 'Expired' ? 'badge-danger' : 'badge-warning'
-                } text-[10px] uppercase font-bold`}>
-                  {item.status}
-                </span>
-
+              <div className="flex items-center gap-2 w-full md:w-auto justify-end border-t md:border-t-0 border-border-subtle pt-3 md:pt-0">
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="p-2 rounded bg-vault-elevated text-text-muted hover:text-status-danger transition-colors"
+                  disabled={deleteMutation.isPending}
+                  className="btn-secondary py-1.5 px-3 text-xs text-status-danger border-status-danger/20 hover:bg-status-danger/10 flex items-center gap-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
+                  Remove
                 </button>
               </div>
             </div>
           ))
         ) : (
-          <div className="glass-panel p-12 text-center text-text-muted">
-            No entries found matching filters.
+          <div className="glass-panel p-12 text-center flex flex-col items-center justify-center">
+            <FileText className="w-12 h-12 text-text-muted mb-4" />
+            <h3 className="text-sm font-bold text-text-primary mb-1">No Entries Found</h3>
+            <p className="text-xs text-text-muted max-w-xs">
+              Configure security standards, contract exceptions, change logs, and RFCs for this workspace.
+            </p>
           </div>
         )}
       </div>
 
-      {/* Add Modal */}
+      {/* Slide-over Form Panel */}
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <>
             <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 15 }}
-              className="w-full max-w-md bg-vault-card border border-border-subtle rounded-xl shadow-2xl p-6 relative"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black z-40"
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 20 }}
+              className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-vault-card border-l border-border-default p-6 shadow-2xl z-50 overflow-y-auto"
             >
-              <button
-                onClick={() => setIsOpen(false)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-vault-elevated text-text-muted hover:text-text-primary transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <h2 className="text-base font-bold text-text-primary mb-4">
-                Add {modeTitle} Entry
-              </h2>
+              <div className="flex justify-between items-center border-b border-border-subtle pb-4 mb-6">
+                <div>
+                  <h2 className="text-base font-bold text-text-primary">Add Log Entry</h2>
+                  <p className="text-xs text-text-muted mt-0.5">Register a new entry for {modeTitle}</p>
+                </div>
+                <button onClick={() => setIsOpen(false)} className="p-1 text-text-muted hover:text-text-primary">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
               <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Title</label>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-text-secondary">Entry Title / Subject</label>
                   <input
                     type="text"
                     required
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                     className="input-field text-xs"
-                    placeholder="e.g. TLS 1.0 support bypass"
+                    placeholder="e.g. Legacy TLS 1.0 support on web-srv-02"
                   />
                 </div>
 
-                {mode === 'rfc' && (
-                  <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Priority Level</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-text-secondary">Status</label>
                     <select
-                      value={form.priority}
-                      onChange={(e) => setForm({ ...form, priority: e.target.value as any })}
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value as ExceptionItem['status'] })}
                       className="input-field text-xs"
                     >
-                      <option value="Low">Low</option>
-                      <option value="Medium">Medium</option>
-                      <option value="High">High</option>
-                      <option value="Critical">Critical</option>
+                      <option value="Draft">Draft</option>
+                      <option value="Pending">Pending Approval</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Expired">Expired</option>
                     </select>
                   </div>
-                )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Reviewer / Admin</label>
-                    <input
-                      type="text"
-                      required
-                      value={form.reviewer}
-                      onChange={(e) => setForm({ ...form, reviewer: e.target.value })}
-                      className="input-field text-xs"
-                      placeholder="Security Team"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Target Date</label>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-text-secondary">Due Date / Rotation Date</label>
                     <input
                       type="date"
                       required
@@ -299,42 +273,63 @@ export default function ExceptionsLog({ mode }: ExceptionsLogProps) {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as any })}
-                    className="input-field text-xs"
-                  >
-                    <option value="Pending">Pending Approval</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Draft">Draft</option>
-                    <option value="Expired">Expired</option>
-                  </select>
-                </div>
+                {mode === 'rfc' && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-text-secondary">Change Priority</label>
+                    <div className="flex gap-2">
+                      {(['Low', 'Medium', 'High', 'Critical'] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setForm({ ...form, priority: p })}
+                          className={`flex-1 py-1.5 rounded-lg border text-[10px] font-bold uppercase transition-all ${
+                            form.priority === p
+                              ? 'bg-brand-primary/10 border-brand-primary text-brand-primary'
+                              : 'bg-vault-elevated/20 border-border-subtle text-text-muted hover:text-text-primary'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Justification & Details</label>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-text-secondary">Justification / Mitigation Details</label>
                   <textarea
                     required
+                    rows={4}
                     value={form.justification}
                     onChange={(e) => setForm({ ...form, justification: e.target.value })}
-                    className="input-field h-24 resize-none text-xs"
-                    placeholder="Enter compliance rules or change descriptions..."
+                    className="input-field text-xs leading-relaxed"
+                    placeholder="Provide full description of why this change is necessary and any risk mitigations..."
                   />
                 </div>
 
-                <div className="flex gap-3 justify-end pt-3 border-t border-border-subtle">
-                  <button type="button" onClick={() => setIsOpen(false)} className="btn-secondary py-2 text-xs">
-                    Cancel
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-text-secondary">Authorizer / Reviewer Name</label>
+                  <input
+                    type="text"
+                    value={form.reviewer}
+                    onChange={(e) => setForm({ ...form, reviewer: e.target.value })}
+                    className="input-field text-xs"
+                    placeholder="e.g. Chief Security Officer / CAB Committee"
+                  />
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button type="submit" disabled={createMutation.isPending} className="flex-1 btn-primary py-2 flex items-center justify-center gap-1.5">
+                    {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Save Log Entry
                   </button>
-                  <button type="submit" className="btn-primary py-2 text-xs">
-                    Save Entry
+                  <button type="button" onClick={() => setIsOpen(false)} className="flex-1 btn-secondary py-2">
+                    Cancel
                   </button>
                 </div>
               </form>
             </motion.div>
-          </div>
+          </>
         )}
       </AnimatePresence>
     </div>

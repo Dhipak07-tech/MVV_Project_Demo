@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, User, Edit2, Trash2, Mail, Phone, ShieldCheck, Tag, X, UserCheck } from 'lucide-react';
+import { Plus, Search, User, Edit2, Trash2, Mail, Phone, X, UserCheck } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -196,7 +196,9 @@ export default function ContactsPage() {
                     <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
                       {contact.name}
                       {contact.type === 'Primary' && (
-                        <UserCheck className="w-4 h-4 text-amber-500" title="Primary Contact" />
+                        <span title="Primary Contact">
+                          <UserCheck className="w-4 h-4 text-amber-500" />
+                        </span>
                       )}
                     </h3>
                     <p className="text-xs text-text-muted">{contact.title}</p>

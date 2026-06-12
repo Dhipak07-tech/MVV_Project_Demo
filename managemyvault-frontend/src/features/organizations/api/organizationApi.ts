@@ -495,6 +495,22 @@ export const organizationApi = {
     const { data } = await api.get('/organizations/stats');
     return data;
   },
+
+  globalSearch: async (query: string): Promise<any[]> => {
+    if (localStorage.getItem('demoMode') === 'true') {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const list = getStoredMockData();
+      return list.filter((o) =>
+        o.name.toLowerCase().includes(query.toLowerCase()) ||
+        o.description?.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    const { data } = await api.get<any[]>('/organizations/search', {
+      params: { query },
+    });
+    return data;
+  },
 };
 
 export default api;
