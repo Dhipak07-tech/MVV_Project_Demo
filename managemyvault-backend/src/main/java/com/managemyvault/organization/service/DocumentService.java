@@ -9,8 +9,10 @@ import com.managemyvault.organization.repository.OrganizationRepository;
 import com.managemyvault.organization.web.dto.CreateDocumentRequest;
 import com.managemyvault.organization.web.dto.DocumentResponse;
 import com.managemyvault.organization.web.dto.UpdateDocumentRequest;
+import com.managemyvault.search.domain.EntityEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ public class DocumentService {
 
     private final DocumentRepository documentRepository;
     private final OrganizationRepository organizationRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private Organization getOrganizationOrThrow(UUID orgId) {
         return organizationRepository.findByIdAndDeletedFalse(orgId)
@@ -66,6 +69,7 @@ public class DocumentService {
         doc.setCreatedBy(currentUser.getId());
         Document saved = documentRepository.save(doc);
         log.info("Document created: {} for organization {}", saved.getTitle(), orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.CREATE, saved.getId().toString(), "DOCUMENT", orgId.toString(), saved));
         return DocumentResponse.from(saved);
     }
 
@@ -85,6 +89,7 @@ public class DocumentService {
         doc.setUpdatedBy(currentUser.getId());
         Document saved = documentRepository.save(doc);
         log.info("Document updated: {} for organization {}", saved.getTitle(), orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.UPDATE, saved.getId().toString(), "DOCUMENT", orgId.toString(), saved));
         return DocumentResponse.from(saved);
     }
 
@@ -98,5 +103,6 @@ public class DocumentService {
         }
         documentRepository.delete(doc);
         log.info("Document deleted: {} from organization {}", docId, orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.DELETE, docId.toString(), "DOCUMENT", orgId.toString(), null));
     }
 }

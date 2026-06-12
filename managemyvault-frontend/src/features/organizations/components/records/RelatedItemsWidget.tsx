@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link2, Unlink, Plus, X, Search, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../../../../config/constants';
@@ -108,7 +108,7 @@ export default function RelatedItemsWidget({
     }
   };
 
-  const handleLink = async (targetId: string, targetName: string) => {
+  const handleLink = async (targetId: string) => {
     try {
       await axios.post(
         `${API_URL}/relationships`,
@@ -208,7 +208,7 @@ export default function RelatedItemsWidget({
               {searchResults.map((result) => (
                 <div
                   key={result.id}
-                  onClick={() => handleLink(result.id, result.name)}
+                  onClick={() => handleLink(result.id)}
                   className="p-2 hover:bg-vault-elevated cursor-pointer flex items-center justify-between transition-colors"
                 >
                   <span>{result.name}</span>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Shield, Phone, Key, HelpCircle, Save, AlertCircle } from 'lucide-react';
+import { Shield, Phone, Key, HelpCircle, AlertCircle } from 'lucide-react';
 import { useOrganization } from '../../hooks/useOrganizations';
 import RecordLayout from '../records/RecordLayout';
 import { API_URL } from '../../../../config/constants';
@@ -25,7 +25,6 @@ export default function AfterHours() {
   const [data, setData] = useState<AfterHoursData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Form fields
   const [alarmCodes, setAlarmCodes] = useState('');
@@ -47,9 +46,8 @@ export default function AfterHours() {
         headers
       });
       setData(response.data);
-      setError(null);
     } catch (e) {
-      setError('Failed to load after hours information.');
+      console.error('Failed to load after hours information:', e);
     } finally {
       setIsLoading(false);
     }

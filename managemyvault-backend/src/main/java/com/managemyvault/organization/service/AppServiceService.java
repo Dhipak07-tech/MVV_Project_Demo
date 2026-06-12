@@ -9,8 +9,10 @@ import com.managemyvault.organization.repository.OrganizationRepository;
 import com.managemyvault.organization.web.dto.AppResponse;
 import com.managemyvault.organization.web.dto.CreateAppRequest;
 import com.managemyvault.organization.web.dto.UpdateAppRequest;
+import com.managemyvault.search.domain.EntityEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class AppServiceService {
 
     private final AppServiceRepository appServiceRepository;
     private final OrganizationRepository organizationRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private Organization getOrganizationOrThrow(UUID orgId) {
         return organizationRepository.findByIdAndDeletedFalse(orgId)
@@ -79,6 +82,7 @@ public class AppServiceService {
         app.setCreatedBy(currentUser.getId());
         AppService saved = appServiceRepository.save(app);
         log.info("AppService created: {} for organization {}", saved.getName(), orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.CREATE, saved.getId().toString(), "APPLICATION", orgId.toString(), saved));
         return AppResponse.from(saved);
     }
 
@@ -100,6 +104,7 @@ public class AppServiceService {
         app.setUpdatedBy(currentUser.getId());
         AppService saved = appServiceRepository.save(app);
         log.info("AppService updated: {} for organization {}", saved.getName(), orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.UPDATE, saved.getId().toString(), "APPLICATION", orgId.toString(), saved));
         return AppResponse.from(saved);
     }
 
@@ -113,5 +118,6 @@ public class AppServiceService {
         }
         appServiceRepository.delete(app);
         log.info("AppService deleted: {} from organization {}", appId, orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.DELETE, appId.toString(), "APPLICATION", orgId.toString(), null));
     }
 }

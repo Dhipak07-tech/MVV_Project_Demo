@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { History, Eye, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { History, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../../../../config/constants';
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Building2, Users, FileText, AlertCircle, Clock, MapPin, Globe } from 'lucide-react';
+import { Building2, Users, FileText, AlertCircle, Clock, Globe } from 'lucide-react';
 import { useOrganization } from '../../hooks/useOrganizations';
 import RecordLayout from '../records/RecordLayout';
 import { API_URL } from '../../../../config/constants';
@@ -36,7 +36,6 @@ export default function SiteSummary() {
   const [isEditing, setIsEditing] = useState(false);
   const [contacts, setContacts] = useState<ContactOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -56,13 +55,11 @@ export default function SiteSummary() {
     try {
       const response = await axios.get(`${API_URL}/organizations/${orgId}/site-summary`, { headers });
       setData(response.data);
-      setError(null);
     } catch (e: any) {
       if (e.response?.status === 404) {
-        // Not found, we will initialize a blank form
         setData(null);
       } else {
-        setError('Failed to load site summary.');
+        console.error('Failed to load site summary:', e);
       }
     } finally {
       setIsLoading(false);

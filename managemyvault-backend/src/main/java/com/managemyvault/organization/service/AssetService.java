@@ -9,8 +9,10 @@ import com.managemyvault.organization.repository.OrganizationRepository;
 import com.managemyvault.organization.web.dto.AssetResponse;
 import com.managemyvault.organization.web.dto.CreateAssetRequest;
 import com.managemyvault.organization.web.dto.UpdateAssetRequest;
+import com.managemyvault.search.domain.EntityEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class AssetService {
 
     private final AssetRepository assetRepository;
     private final OrganizationRepository organizationRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private Organization getOrganizationOrThrow(UUID orgId) {
         return organizationRepository.findByIdAndDeletedFalse(orgId)
@@ -83,6 +86,7 @@ public class AssetService {
         asset.setCreatedBy(currentUser.getId());
         Asset saved = assetRepository.save(asset);
         log.info("Asset created: {} for organization {}", saved.getName(), orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.CREATE, saved.getId().toString(), "ASSET", orgId.toString(), saved));
         return AssetResponse.from(saved);
     }
 
@@ -108,6 +112,7 @@ public class AssetService {
         asset.setUpdatedBy(currentUser.getId());
         Asset saved = assetRepository.save(asset);
         log.info("Asset updated: {} for organization {}", saved.getName(), orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.UPDATE, saved.getId().toString(), "ASSET", orgId.toString(), saved));
         return AssetResponse.from(saved);
     }
 
@@ -121,5 +126,6 @@ public class AssetService {
         }
         assetRepository.delete(asset);
         log.info("Asset deleted: {} from organization {}", assetId, orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.DELETE, assetId.toString(), "ASSET", orgId.toString(), null));
     }
 }

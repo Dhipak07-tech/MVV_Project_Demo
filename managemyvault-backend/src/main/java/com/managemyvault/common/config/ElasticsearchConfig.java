@@ -7,7 +7,10 @@ import org.springframework.data.elasticsearch.client.elc.ElasticsearchConfigurat
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 
 @Configuration
-@EnableElasticsearchRepositories(basePackages = "com.managemyvault.organization.search")
+@EnableElasticsearchRepositories(basePackages = {
+    "com.managemyvault.organization.search",
+    "com.managemyvault.search.infrastructure"
+})
 public class ElasticsearchConfig extends ElasticsearchConfiguration {
 
     @Value("${spring.elasticsearch.uris:http://localhost:9200}")

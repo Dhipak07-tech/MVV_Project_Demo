@@ -10,8 +10,10 @@ import com.managemyvault.organization.repository.PasswordRepository;
 import com.managemyvault.organization.web.dto.CreatePasswordRequest;
 import com.managemyvault.organization.web.dto.PasswordResponse;
 import com.managemyvault.organization.web.dto.UpdatePasswordRequest;
+import com.managemyvault.search.domain.EntityEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class PasswordService {
     private final PasswordRepository passwordRepository;
     private final OrganizationRepository organizationRepository;
     private final EncryptionUtils encryptionUtils;
+    private final ApplicationEventPublisher eventPublisher;
 
     private Organization getOrganizationOrThrow(UUID orgId) {
         return organizationRepository.findByIdAndDeletedFalse(orgId)
@@ -86,6 +89,7 @@ public class PasswordService {
         pw.setCreatedBy(currentUser.getId());
         Password saved = passwordRepository.save(pw);
         log.info("Password created: {} for organization {}", saved.getName(), orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.CREATE, saved.getId().toString(), "PASSWORD", orgId.toString(), saved));
         return PasswordResponse.from(saved, request.getPassword());
     }
 
@@ -115,6 +119,7 @@ public class PasswordService {
         pw.setUpdatedBy(currentUser.getId());
         Password saved = passwordRepository.save(pw);
         log.info("Password updated: {} for organization {}", saved.getName(), orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.UPDATE, saved.getId().toString(), "PASSWORD", orgId.toString(), saved));
 
         String decrypted = encryptionUtils.decrypt(saved.getPasswordEncrypted(), saved.getIv(), orgId);
         return PasswordResponse.from(saved, decrypted);
@@ -130,5 +135,6 @@ public class PasswordService {
         }
         passwordRepository.delete(pw);
         log.info("Password deleted: {} from organization {}", passwordId, orgId);
+        eventPublisher.publishEvent(new EntityEvent<>(EntityEvent.Action.DELETE, passwordId.toString(), "PASSWORD", orgId.toString(), null));
     }
 }

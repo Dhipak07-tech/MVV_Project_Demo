@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Landmark, ShieldAlert, Cpu, FileText, Wifi, Key, Save, AlertCircle } from 'lucide-react';
+import { Landmark, ShieldAlert, Cpu, Wifi, AlertCircle } from 'lucide-react';
 import { useOrganization } from '../../hooks/useOrganizations';
 import RecordLayout from '../records/RecordLayout';
 import { API_URL } from '../../../../config/constants';
@@ -25,7 +25,6 @@ export default function OnsiteInfo() {
   const [data, setData] = useState<OnsiteData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Form fields
   const [parkingInstructions, setParkingInstructions] = useState('');
@@ -47,9 +46,8 @@ export default function OnsiteInfo() {
         headers
       });
       setData(response.data);
-      setError(null);
     } catch (e) {
-      setError('Failed to load onsite information.');
+      console.error('Failed to load onsite information:', e);
     } finally {
       setIsLoading(false);
     }

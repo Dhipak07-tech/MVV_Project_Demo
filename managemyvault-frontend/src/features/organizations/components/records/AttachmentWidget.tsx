@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Paperclip, Trash2, Download, UploadCloud, FileText, ImageIcon, Eye } from 'lucide-react';
+import { Paperclip, Trash2, Download, UploadCloud, FileText, ImageIcon } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../../../../config/constants';
 
