@@ -175,7 +175,7 @@ export default function LoginPage() {
       const auth = createDemoAuth(demoUser);
       localStorage.setItem('demoMode', 'true');
       setAuth(auth.accessToken, auth.refreshToken, auth.user);
-      navigate('/organizations');
+      navigate('/dashboard');
       setIsLoading(false);
       return;
     }
@@ -186,7 +186,7 @@ export default function LoginPage() {
       const response = await authApi.login(data);
       localStorage.removeItem('demoMode');
       setAuth(response.accessToken, response.refreshToken, response.user);
-      navigate('/organizations');
+      navigate('/dashboard');
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { detail?: string }; status?: number } };
@@ -202,7 +202,7 @@ export default function LoginPage() {
           const auth = createDemoAuth(fallbackUser);
           localStorage.setItem('demoMode', 'true');
           setAuth(auth.accessToken, auth.refreshToken, auth.user);
-          navigate('/organizations');
+          navigate('/dashboard');
           return;
         }
         setError('Backend unavailable. Use a Quick Access role to demo the application.');
@@ -223,7 +223,7 @@ export default function LoginPage() {
     const auth = createDemoAuth(demoUser);
     localStorage.setItem('demoMode', 'true');
     setAuth(auth.accessToken, auth.refreshToken, auth.user);
-    navigate('/organizations');
+    navigate('/dashboard');
   };
 
   /**

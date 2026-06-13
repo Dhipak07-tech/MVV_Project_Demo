@@ -40,7 +40,7 @@ export default function OrganizationsPage() {
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Organizations</h1>
+          <h1 className="text-page-title text-text-primary">Organizations</h1>
           <p className="text-sm text-text-secondary mt-1">Manage client organizations</p>
         </div>
         <button onClick={() => setShowCreateModal(true)} className="btn-primary" id="create-org-btn">
@@ -53,7 +53,7 @@ export default function OrganizationsPage() {
           <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="stat-card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-text-muted uppercase tracking-wider">{s.label}</p>
+                <p className="text-metadata text-text-muted uppercase tracking-wider">{s.label}</p>
                 <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
               </div>
               <div className={`p-2.5 rounded-xl ${s.bg}`}><s.icon className={`w-5 h-5 ${s.color}`} /></div>

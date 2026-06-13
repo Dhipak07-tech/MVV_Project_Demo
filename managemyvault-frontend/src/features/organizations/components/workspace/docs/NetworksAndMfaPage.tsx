@@ -106,10 +106,10 @@ export default function NetworksAndMfaPage({ mode }: NetworksAndMfaPageProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-5">
         <div>
-          <span className="text-xs font-semibold text-brand-primary tracking-wider uppercase">
+          <span className="text-metadata font-semibold text-brand-primary tracking-wider uppercase">
             Core Documentation
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-1">
+          <h1 className="text-page-title text-text-primary mt-1">
             {modeTitle}
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
@@ -151,21 +151,21 @@ export default function NetworksAndMfaPage({ mode }: NetworksAndMfaPageProps) {
                   {mode === 'known-issues' && <AlertTriangle className="w-4.5 h-4.5 text-status-danger" />}
                   {mode === 'maintenance' && <Calendar className="w-4.5 h-4.5 text-status-warning" />}
 
-                  <h3 className="text-sm font-bold text-text-primary">{item.title}</h3>
+                  <h3 className="text-card-title text-text-primary">{item.title}</h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-vault-elevated/20 p-3 rounded-lg border border-border-subtle text-xs">
                   <div>
                     <span className="text-text-muted block text-[10px] uppercase font-bold">
-                      {mode === 'networks' ? 'Subnet' : mode === 'mfa' ? 'Provider' : mode === 'known-issues' ? 'Severity' : 'Target Devices'}
+                       {mode === 'networks' ? 'Subnet' : mode === 'mfa' ? 'Provider' : mode === 'known-issues' ? 'Severity' : 'Target Devices'}
                     </span>
-                    <span className="text-text-primary font-semibold">{item.param1}</span>
+                    <span className="text-code text-text-primary font-semibold">{item.param1}</span>
                   </div>
                   <div>
                     <span className="text-text-muted block text-[10px] uppercase font-bold">
                       {mode === 'networks' ? 'VLAN / Gateway' : mode === 'mfa' ? 'Backup Policy' : mode === 'known-issues' ? 'Status' : 'Duration'}
                     </span>
-                    <span className="text-text-primary font-semibold">{item.param2}</span>
+                    <span className="text-code text-text-primary font-semibold">{item.param2}</span>
                   </div>
                 </div>
 
@@ -230,7 +230,7 @@ export default function NetworksAndMfaPage({ mode }: NetworksAndMfaPageProps) {
 
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-secondary">Title / Alias Name</label>
+                  <label className="text-form-label text-text-secondary">Title / Alias Name</label>
                   <input
                     type="text"
                     required
@@ -242,7 +242,7 @@ export default function NetworksAndMfaPage({ mode }: NetworksAndMfaPageProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-secondary">
+                  <label className="text-form-label text-text-secondary">
                     {mode === 'networks' ? 'Subnet (CIDR)' : mode === 'mfa' ? 'MFA Provider / Application' : mode === 'known-issues' ? 'Severity / Impact' : 'Target Devices'}
                   </label>
                   <input
@@ -255,7 +255,7 @@ export default function NetworksAndMfaPage({ mode }: NetworksAndMfaPageProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-secondary">
+                  <label className="text-form-label text-text-secondary">
                     {mode === 'networks' ? 'VLAN / Gateway details' : mode === 'mfa' ? 'Bypass / Recovery Protocols' : mode === 'known-issues' ? 'Current Status' : 'Patching Duration'}
                   </label>
                   <input
@@ -268,7 +268,7 @@ export default function NetworksAndMfaPage({ mode }: NetworksAndMfaPageProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-secondary">Notes & Configuration details</label>
+                  <label className="text-form-label text-text-secondary">Notes & Configuration details</label>
                   <textarea
                     required
                     rows={5}

@@ -224,7 +224,7 @@ export default function WorkspaceLayout() {
                               <Link
                                 key={item.name}
                                 to={fullPath}
-                                className={`flex items-center justify-between px-3 py-1.5 text-xs rounded-lg transition-all ${
+                                className={`flex items-center justify-between px-3 py-1.5 text-sm rounded-lg transition-all font-medium ${
                                   isActive
                                     ? 'bg-brand-primary/10 text-brand-primary font-semibold'
                                     : 'text-text-secondary hover:text-text-primary hover:bg-vault-elevated/30'

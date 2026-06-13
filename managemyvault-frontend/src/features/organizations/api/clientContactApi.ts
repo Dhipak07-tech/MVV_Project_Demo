@@ -1,4 +1,5 @@
 import api from './organizationApi';
+import { API_URL } from '../../../config/constants';
 
 // ============================================================================
 // Types
@@ -255,6 +256,21 @@ export const clientContactApi = {
         return getStored<Contact[]>(KEYS.CONTACTS, INITIAL_CONTACTS);
       }
       const { data } = await api.get<Contact[]>('/contacts', { params: { organizationId: orgId } });
+      return data;
+    },
+    search: async (orgId: string, query: string): Promise<Contact[]> => {
+      if (isDemo()) {
+        await new Promise(r => setTimeout(r, 150));
+        const list = getStored<Contact[]>(KEYS.CONTACTS, INITIAL_CONTACTS);
+        if (!query) return list;
+        const q = query.toLowerCase();
+        return list.filter(c => 
+          `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
+          (c.role || '').toLowerCase().includes(q) ||
+          (c.email || '').toLowerCase().includes(q)
+        );
+      }
+      const { data } = await api.get<Contact[]>('/contacts/search', { params: { organizationId: orgId, query } });
       return data;
     },
     get: async (id: string): Promise<Contact> => {
@@ -683,6 +699,7 @@ export const clientContactApi = {
       const list = getStored<any[]>(KEYS.ACTIVITIES, []);
       const newEvent = {
         id: crypto.randomUUID(),
+        organizationId: orgId,
         entityType,
         entityId,
         action,

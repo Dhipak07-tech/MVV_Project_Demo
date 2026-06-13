@@ -77,6 +77,14 @@ public class RedisConfig {
                         defaultConfig.entryTtl(Duration.ofMinutes(15)))
                 .withCacheConfiguration("organizationMembers",
                         defaultConfig.entryTtl(Duration.ofMinutes(10)))
+                .withCacheConfiguration("dashboardKpis",
+                        defaultConfig.entryTtl(Duration.ofMinutes(5)))
+                .withCacheConfiguration("dashboardOrgs",
+                        defaultConfig.entryTtl(Duration.ofMinutes(5)))
+                .withCacheConfiguration("dashboardTrends",
+                        defaultConfig.entryTtl(Duration.ofMinutes(5)))
+                .withCacheConfiguration("dashboardSecurity",
+                        defaultConfig.entryTtl(Duration.ofMinutes(5)))
                 .build();
     }
 }

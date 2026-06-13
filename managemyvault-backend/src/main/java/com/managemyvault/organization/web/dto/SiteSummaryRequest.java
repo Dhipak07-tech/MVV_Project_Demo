@@ -20,13 +20,15 @@ public class SiteSummaryRequest {
 
     private String timezone;
 
-    private String businessHours;
+    private String hoursOfOperation;
 
     private String notes;
 
     private UUID primaryContactId;
 
-    private UUID emergencyContactId;
+    private UUID emergencyContact1Id;
+
+    private UUID emergencyContact2Id;
 
     private UUID authorizationContactId;
 }

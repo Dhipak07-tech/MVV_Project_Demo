@@ -4,6 +4,7 @@ import com.managemyvault.common.domain.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -28,8 +29,8 @@ public class SiteSummary extends AuditableEntity {
     @Column(length = 100)
     private String timezone;
 
-    @Column(name = "business_hours", length = 255)
-    private String businessHours;
+    @Column(name = "hours_of_operation", length = 255)
+    private String hoursOfOperation;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
@@ -37,14 +38,24 @@ public class SiteSummary extends AuditableEntity {
     @Column(name = "primary_contact_id")
     private UUID primaryContactId;
 
-    @Column(name = "emergency_contact_id")
-    private UUID emergencyContactId;
+    @Column(name = "emergency_contact_1_id")
+    private UUID emergencyContact1Id;
+
+    @Column(name = "emergency_contact_2_id")
+    private UUID emergencyContact2Id;
 
     @Column(name = "authorization_contact_id")
     private UUID authorizationContactId;
 
-    @Column(nullable = false)
-    private Boolean active;
+    @Column(name = "is_archived", nullable = false)
+    @Builder.Default
+    private Boolean isArchived = false;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
+    @Column(name = "archived_by")
+    private UUID archivedBy;
 
     @Version
     private Long version;

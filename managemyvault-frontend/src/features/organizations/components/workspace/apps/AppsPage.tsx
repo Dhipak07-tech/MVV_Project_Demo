@@ -149,10 +149,10 @@ export default function AppsPage() {
             <IconComponent className="w-6 h-6 text-brand-primary" />
           </div>
           <div>
-            <span className="text-xs font-semibold text-brand-primary tracking-wider uppercase">
+            <span className="text-metadata font-semibold text-brand-primary tracking-wider uppercase">
               Applications & Service Control
             </span>
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
+            <h1 className="text-page-title text-text-primary mt-0.5">
               {appLabel}
             </h1>
             <p className="text-sm text-text-secondary mt-0.5">
@@ -213,14 +213,14 @@ export default function AppsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-border-subtle bg-vault-elevated/20 text-xs font-bold text-text-muted uppercase tracking-wider">
+                    <tr className="border-b border-border-subtle bg-vault-elevated/20 text-table-header text-text-muted">
                       <th className="p-3.5">Name</th>
                       <th className="p-3.5">Provider / Vendor</th>
                       <th className="p-3.5">Endpoint URL</th>
                       <th className="p-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-subtle text-sm">
+                  <tbody className="divide-y divide-border-subtle text-table-cell">
                     {apps.map((app) => (
                       <tr
                         key={app.id}
@@ -293,7 +293,7 @@ export default function AppsPage() {
                   >
                     <div className="flex justify-between items-start border-b border-border-subtle pb-3">
                       <div>
-                        <h3 className="font-bold text-text-primary text-base">{app.name}</h3>
+                        <h3 className="text-card-title text-text-primary">{app.name}</h3>
                         <p className="text-xs text-text-muted font-medium mt-0.5">{appLabel}</p>
                       </div>
                       <button
@@ -312,7 +312,7 @@ export default function AppsPage() {
                       {app.url && (
                         <div>
                           <span className="text-text-muted block font-medium">Console URL / Address</span>
-                          <span className="font-mono text-text-secondary block mt-0.5">
+                          <span className="text-code text-text-secondary block mt-0.5">
                             <a
                               href={app.url.startsWith('http') ? app.url : `https://${app.url}`}
                               target="_blank"
@@ -327,7 +327,7 @@ export default function AppsPage() {
                       {app.licenseKey && (
                         <div>
                           <span className="text-text-muted block font-medium">Subscription / License Keys</span>
-                          <span className="font-mono text-text-secondary block mt-0.5 bg-vault-elevated/50 p-2 rounded border border-border-subtle select-all">
+                          <span className="text-code text-text-secondary block mt-0.5 bg-vault-elevated/50 p-2 rounded border border-border-subtle select-all">
                             {app.licenseKey}
                           </span>
                         </div>
@@ -384,7 +384,7 @@ export default function AppsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Service / Configuration Title *
                     </label>
                     <input
@@ -398,7 +398,7 @@ export default function AppsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Provider / Manufacturer
                     </label>
                     <input
@@ -411,7 +411,7 @@ export default function AppsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Endpoint URL / Console
                     </label>
                     <input
@@ -424,7 +424,7 @@ export default function AppsPage() {
                   </div>
 
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Licensing / Serial Keys
                     </label>
                     <input
@@ -437,7 +437,7 @@ export default function AppsPage() {
                   </div>
 
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Technical Documentation & Notes
                     </label>
                     <textarea

@@ -67,10 +67,10 @@ export default function WorkspaceHome() {
       {/* Header section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border-subtle pb-5">
         <div>
-          <span className="text-xs font-semibold text-brand-primary tracking-wider uppercase">
+          <span className="text-metadata font-semibold text-brand-primary tracking-wider uppercase">
             Workspace Dashboard
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-1">
+          <h1 className="text-page-title text-text-primary mt-1">
             {org.name}
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
@@ -160,7 +160,7 @@ export default function WorkspaceHome() {
         
         {/* Left Column: Health Score Card */}
         <div className="glass-panel p-6 flex flex-col items-center justify-center text-center">
-          <h2 className="text-base font-semibold text-text-primary self-start mb-6">Documentation Health</h2>
+          <h2 className="text-card-title text-text-primary self-start mb-6">Documentation Health</h2>
           <div className="w-40 h-40 flex items-center justify-center mb-6">
             <HealthScoreRing score={healthScore} size={150} strokeWidth={12} />
           </div>
@@ -175,7 +175,7 @@ export default function WorkspaceHome() {
         {/* Center Column: Recent Assets & Configuration quick overview */}
         <div className="glass-panel p-6 flex flex-col justify-between">
           <div>
-            <h2 className="text-base font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <h2 className="text-card-title text-text-primary mb-4 flex items-center gap-2">
               <Database className="w-4 h-4 text-brand-primary" />
               Critical Assets Quick View
             </h2>
@@ -191,7 +191,7 @@ export default function WorkspaceHome() {
                       <p className="text-[10px] text-text-muted mt-0.5">{asset.type}</p>
                     </div>
                   </div>
-                  <span className="text-[11px] font-mono text-text-secondary bg-vault-base px-2 py-0.5 rounded border border-border-subtle">
+                  <span className="text-[11px] text-code text-text-secondary bg-vault-base px-2 py-0.5 rounded border border-border-subtle">
                     {asset.ip}
                   </span>
                 </div>
@@ -205,7 +205,7 @@ export default function WorkspaceHome() {
 
         {/* Right Column: Security Alerts & Compliance status */}
         <div className="glass-panel p-6">
-          <h2 className="text-base font-semibold text-text-primary mb-4 flex items-center gap-2">
+          <h2 className="text-card-title text-text-primary mb-4 flex items-center gap-2">
             <ShieldAlert className="w-4.5 h-4.5 text-status-danger" />
             Security & Alerts
           </h2>
@@ -231,7 +231,7 @@ export default function WorkspaceHome() {
         
         {/* Left/Center Columns: Recent Activity Log */}
         <div className="lg:col-span-2 glass-panel p-6">
-          <h2 className="text-base font-semibold text-text-primary mb-5 flex items-center gap-2">
+          <h2 className="text-card-title text-text-primary mb-5 flex items-center gap-2">
             <Activity className="w-4.5 h-4.5 text-brand-secondary" />
             Recent Workspace Activity
           </h2>
@@ -255,7 +255,7 @@ export default function WorkspaceHome() {
         {/* Right Column: Primary Contacts Widget */}
         <div className="glass-panel p-6 flex flex-col justify-between">
           <div>
-            <h2 className="text-base font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <h2 className="text-card-title text-text-primary mb-4 flex items-center gap-2">
               <Users className="w-4.5 h-4.5 text-status-success" />
               Primary Site Contacts
             </h2>

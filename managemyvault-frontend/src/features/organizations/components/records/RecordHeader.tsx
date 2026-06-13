@@ -19,7 +19,7 @@ export default function RecordHeader({
   return (
     <div className="border-b border-border-subtle pb-4 mb-4">
       {/* Breadcrumbs */}
-      <nav className="flex items-center gap-1.5 text-xs text-text-muted mb-2 font-medium">
+      <nav className="flex items-center gap-1.5 text-metadata text-text-muted mb-2">
         {breadcrumbs.map((crumb, idx) => (
           <React.Fragment key={idx}>
             {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-text-muted" />}
@@ -37,7 +37,7 @@ export default function RecordHeader({
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-brand-primary/10 text-brand-primary border border-brand-primary/25">
               {type}
             </span>
-            <h1 className="text-xl font-extrabold text-text-primary tracking-tight">
+            <h1 className="text-page-title text-text-primary">
               {title}
             </h1>
           </div>
@@ -45,7 +45,7 @@ export default function RecordHeader({
 
         {/* Audit info */}
         {(lastUpdated || updatedBy) && (
-          <div className="flex items-center gap-4 text-xs text-text-secondary">
+          <div className="flex items-center gap-4 text-metadata text-text-secondary">
             {lastUpdated && (
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-text-muted" />

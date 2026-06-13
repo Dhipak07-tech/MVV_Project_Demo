@@ -105,10 +105,10 @@ export default function DocumentsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-5">
         <div>
-          <span className="text-xs font-semibold text-brand-primary tracking-wider uppercase">
+          <span className="text-metadata font-semibold text-brand-primary tracking-wider uppercase">
             Core Documentation
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-1">
+          <h1 className="text-page-title text-text-primary mt-1">
             Documents Center
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
@@ -222,7 +222,7 @@ export default function DocumentsPage() {
                     </div>
                   ) : (
                     <div>
-                      <h2 className="text-base font-bold text-text-primary">{selectedDoc.title}</h2>
+                      <h2 className="text-card-title text-text-primary">{selectedDoc.title}</h2>
                       <div className="flex items-center gap-4 text-[10px] text-text-muted mt-1.5">
                         <span className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5" /> Platform User
@@ -275,11 +275,11 @@ export default function DocumentsPage() {
                     <textarea
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
-                      className="input-field h-96 font-mono text-xs leading-relaxed"
+                      className="input-field h-96 text-code text-xs leading-relaxed"
                       placeholder="Write your markdown document here..."
                     />
                   ) : (
-                    <div className="prose prose-invert max-w-none text-xs text-text-secondary leading-relaxed bg-vault-elevated/20 p-4 rounded-xl border border-border-subtle whitespace-pre-wrap font-mono">
+                    <div className="prose prose-invert max-w-none text-xs text-text-secondary leading-relaxed bg-vault-elevated/20 p-4 rounded-xl border border-border-subtle whitespace-pre-wrap text-code">
                       {selectedDoc.content}
                     </div>
                   )}

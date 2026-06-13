@@ -33,6 +33,17 @@ public class ContactController {
         return ResponseEntity.ok(contactService.getByOrganizationId(organizationId));
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<Contact>> search(
+            @RequestParam("organizationId") UUID organizationId,
+            @RequestParam(value = "query", required = false) String query,
+            @CurrentUser UserPrincipal currentUser) {
+        if (!orgAccessControl.canAccess(organizationId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(contactService.search(organizationId, query));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Contact> getById(
             @PathVariable("id") UUID id,

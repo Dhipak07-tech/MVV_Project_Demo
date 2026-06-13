@@ -254,4 +254,61 @@
   .animate-delay-300 {
     animation-delay: 300ms;
   }
+
+  /* Typography Design Tokens */
+  .text-page-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .text-section-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .text-card-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .text-table-header {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .text-table-cell {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .text-form-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .text-form-value {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .text-metadata {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .text-code {
+    font-family: 'JetBrains Mono', monospace;
+  }
 }

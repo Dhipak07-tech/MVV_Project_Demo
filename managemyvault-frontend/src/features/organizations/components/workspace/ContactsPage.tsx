@@ -8,7 +8,6 @@ interface Contact {
   id: string;
   firstName: string;
   lastName: string;
-  name: string;
   role: string;
   email: string;
   phone: string;
@@ -167,10 +166,10 @@ export default function ContactsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-5">
         <div>
-          <span className="text-xs font-semibold text-brand-primary tracking-wider uppercase">
+          <span className="text-metadata font-semibold text-brand-primary tracking-wider uppercase">
             Client Contact
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-1">
+          <h1 className="text-page-title text-text-primary mt-1">
             Contacts Directory
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
@@ -231,7 +230,7 @@ export default function ContactsPage() {
                     <User className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-text-primary flex items-center gap-1.5">
+                    <h3 className="text-card-title text-text-primary flex items-center gap-1.5">
                       {contact.firstName} {contact.lastName}
                       {contact.primaryContact && (
                         <span title="Primary Contact">
@@ -348,7 +347,7 @@ export default function ContactsPage() {
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">First Name</label>
+                    <label className="text-form-label uppercase text-text-muted mb-1 block">First Name</label>
                     <input
                       type="text"
                       required
@@ -359,7 +358,7 @@ export default function ContactsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Last Name</label>
+                    <label className="text-form-label uppercase text-text-muted mb-1 block">Last Name</label>
                     <input
                       type="text"
                       required
@@ -373,7 +372,7 @@ export default function ContactsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Job Title / Role</label>
+                    <label className="text-form-label uppercase text-text-muted mb-1 block">Job Title / Role</label>
                     <input
                       type="text"
                       required
@@ -384,7 +383,7 @@ export default function ContactsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Department</label>
+                    <label className="text-form-label uppercase text-text-muted mb-1 block">Department</label>
                     <input
                       type="text"
                       value={form.department}
@@ -397,7 +396,7 @@ export default function ContactsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Email</label>
+                    <label className="text-form-label uppercase text-text-muted mb-1 block">Email</label>
                     <input
                       type="email"
                       required
@@ -408,7 +407,7 @@ export default function ContactsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Phone</label>
+                    <label className="text-form-label uppercase text-text-muted mb-1 block">Phone</label>
                     <input
                       type="text"
                       value={form.phone}
@@ -421,7 +420,7 @@ export default function ContactsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Mobile</label>
+                    <label className="text-form-label uppercase text-text-muted mb-1 block">Mobile</label>
                     <input
                       type="text"
                       value={form.mobile}
@@ -431,7 +430,7 @@ export default function ContactsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Status</label>
+                    <label className="text-form-label uppercase text-text-muted mb-1 block">Status</label>
                     <select
                       value={form.isActive ? 'Active' : 'Inactive'}
                       onChange={(e) => setForm({ ...form, isActive: e.target.value === 'Active' })}
@@ -445,7 +444,7 @@ export default function ContactsPage() {
 
                 {/* Verification/Auth Flags */}
                 <div className="space-y-2 pt-2 border-t border-border-subtle">
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Access & Roles</label>
+                  <label className="text-form-label uppercase text-text-muted mb-1 block">Access & Roles</label>
                   <div className="grid grid-cols-3 gap-2">
                     <label className="flex items-center gap-2 cursor-pointer p-2 rounded bg-vault-elevated/40 hover:bg-vault-elevated transition-colors">
                       <input
@@ -478,7 +477,7 @@ export default function ContactsPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold uppercase text-text-muted mb-1 block">Notes / Permissions</label>
+                  <label className="text-form-label uppercase text-text-muted mb-1 block">Notes / Permissions</label>
                   <textarea
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}

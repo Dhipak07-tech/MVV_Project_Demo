@@ -87,7 +87,7 @@ export default function OrganizationCard({
             )}
 
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-text-primary truncate max-w-[180px]">
+              <h3 className="text-card-title text-text-primary truncate max-w-[180px]">
                 {org.name}
               </h3>
               <IndustryBadge industry={org.industry} />
@@ -165,7 +165,7 @@ export default function OrganizationCard({
         <div className="flex items-center justify-between pt-3 border-t border-border-subtle">
           <div className="flex items-center gap-1.5 text-text-muted">
             <Building2 className="w-3.5 h-3.5" />
-            <span className="text-xs font-mono">{org.slug}</span>
+            <span className="text-code text-xs">{org.slug}</span>
           </div>
           <span className="text-xs text-text-muted">
             {formatRelativeTime(org.createdAt)}

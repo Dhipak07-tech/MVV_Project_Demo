@@ -48,6 +48,16 @@ export default {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
+      fontSize: {
+        'page-title': ['28px', { lineHeight: '1.2', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'section-title': ['18px', { fontWeight: '600' }],
+        'card-title': ['16px', { fontWeight: '600' }],
+        'table-header': ['13px', { fontWeight: '600', letterSpacing: '0.04em' }],
+        'table-cell': ['14px', { fontWeight: '400' }],
+        'form-label': ['13px', { fontWeight: '500' }],
+        'form-value': ['14px', { fontWeight: '400' }],
+        'metadata': ['12px', { fontWeight: '400' }],
+      },
       boxShadow: {
         'glow-blue': '0 0 20px rgba(59, 130, 246, 0.3)',
         'glow-cyan': '0 0 20px rgba(34, 211, 238, 0.3)',

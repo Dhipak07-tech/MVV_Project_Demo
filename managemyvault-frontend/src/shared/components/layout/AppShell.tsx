@@ -1,7 +1,7 @@
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Shield, LogOut, Building2, Search, Bell,
-  ChevronDown, User, Settings, Menu
+  ChevronDown, User, Settings, Menu, LayoutDashboard
 } from 'lucide-react';
 import { useAuthStore } from '../../../features/organizations/store/organizationStore';
 import { authApi } from '../../../features/organizations/api/organizationApi';
@@ -46,7 +46,7 @@ export default function AppShell() {
               <Menu className="w-5 h-5 text-text-secondary" />
             </button>
 
-            <Link to="/organizations" className="flex items-center gap-2.5">
+            <Link to="/dashboard" className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center">
                 <Shield className="w-4.5 h-4.5 text-white" />
               </div>
@@ -55,16 +55,28 @@ export default function AppShell() {
               </span>
             </Link>
 
-            <nav className="hidden lg:flex items-center ml-6 gap-1">
+            <nav className="hidden lg:flex items-center ml-6 gap-2">
+              <Link
+                to="/dashboard"
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  location.pathname.startsWith('/dashboard')
+                    ? 'bg-brand-primary/10 text-brand-primary'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-vault-elevated'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
+
               <Link
                 to="/organizations"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
                   location.pathname.startsWith('/organizations') || location.pathname.startsWith('/org')
                     ? 'bg-brand-primary/10 text-brand-primary'
                     : 'text-text-secondary hover:text-text-primary hover:bg-vault-elevated'
                 }`}
               >
-                <Building2 className="w-4 h-4 inline mr-1.5" />
+                <Building2 className="w-4 h-4" />
                 Organizations
               </Link>
             </nav>

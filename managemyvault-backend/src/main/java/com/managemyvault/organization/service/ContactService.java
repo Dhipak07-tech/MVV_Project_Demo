@@ -34,6 +34,14 @@ public class ContactService {
                 .orElseThrow(() -> new ResourceNotFoundException("Contact", id.toString()));
     }
 
+    @Transactional(readOnly = true)
+    public List<Contact> search(UUID organizationId, String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return contactRepository.findByOrganizationId(organizationId);
+        }
+        return contactRepository.searchContacts(organizationId, query.trim());
+    }
+
     @Transactional
     public Contact create(UUID organizationId, Contact contact, UUID userId) {
         Organization organization = organizationRepository.findById(organizationId)

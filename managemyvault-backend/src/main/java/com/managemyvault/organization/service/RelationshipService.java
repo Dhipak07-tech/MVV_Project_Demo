@@ -49,6 +49,7 @@ public class RelationshipService {
             case "appservice", "application" -> "app_services";
             case "vendor" -> "vendors";
             case "backupsolution" -> "backup_solutions";
+            case "site_summary", "sitesummary", "site" -> "site_summaries";
             default -> null;
         };
     }
@@ -56,7 +57,7 @@ public class RelationshipService {
     private String getColumnName(String type) {
         if (type == null) return "name";
         return switch (type.toLowerCase()) {
-            case "document" -> "title";
+            case "document", "site_summary", "sitesummary", "site" -> "title";
             default -> "name";
         };
     }

@@ -8,7 +8,7 @@ interface SiteSummaryState {
   error: string | null;
 
   fetchSiteSummary: (orgId: string) => Promise<void>;
-  saveSiteSummary: (orgId: string, payload: Omit<SiteSummaryData, 'id' | 'active'>) => Promise<void>;
+  saveSiteSummary: (orgId: string, payload: Omit<SiteSummaryData, 'id' | 'isArchived'>) => Promise<void>;
   deleteSiteSummary: () => Promise<void>;
   archiveSiteSummary: () => Promise<void>;
   clearData: () => void;
@@ -45,7 +45,7 @@ export const useSiteSummaryStore = create<SiteSummaryState>((set, get) => ({
     const optimisticData: SiteSummaryData = {
       ...payload,
       id: previousData?.id || crypto.randomUUID(),
-      active: previousData?.active ?? true,
+      isArchived: previousData?.isArchived ?? false,
       updatedAt: new Date().toISOString(),
     };
 
@@ -56,10 +56,7 @@ export const useSiteSummaryStore = create<SiteSummaryState>((set, get) => ({
       if (isUpdate) {
         result = await siteSummaryApi.updateSiteSummary(previousData!.id!, payload);
       } else {
-        result = await siteSummaryApi.createSiteSummary({
-          ...payload,
-          active: true,
-        });
+        result = await siteSummaryApi.createSiteSummary(payload);
       }
       set({ data: result, isSaving: false });
     } catch (err: any) {
@@ -98,7 +95,7 @@ export const useSiteSummaryStore = create<SiteSummaryState>((set, get) => ({
     if (!currentData?.id) return;
 
     const previousData = { ...currentData };
-    const optimisticData = { ...currentData, active: false };
+    const optimisticData = { ...currentData, isArchived: true };
 
     set({ data: optimisticData, isSaving: true, error: null });
 

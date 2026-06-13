@@ -149,4 +149,42 @@ public class AttachmentService {
             throw new RuntimeException("MinIO download failed: " + e.getMessage(), e);
         }
     }
+
+    @Transactional
+    public void copyAttachments(String entityType, UUID fromId, UUID toId, UUID userId) {
+        List<Attachment> attachments = getAttachmentsForEntity(entityType, fromId);
+        for (Attachment att : attachments) {
+            String newObjectKey = String.format("orgs/%s/%s/%s/%s-%s", 
+                    att.getOrganizationId(), entityType, toId, UUID.randomUUID(), att.getFileName());
+            try {
+                io.minio.CopySource source = io.minio.CopySource.builder()
+                        .bucket(minioBucketName)
+                        .object(att.getObjectKey())
+                        .build();
+                minioClient.copyObject(
+                        io.minio.CopyObjectArgs.builder()
+                                .bucket(minioBucketName)
+                                .object(newObjectKey)
+                                .source(source)
+                                .build()
+                );
+                
+                Attachment newAttachment = Attachment.builder()
+                        .organizationId(att.getOrganizationId())
+                        .entityType(entityType)
+                        .entityId(toId)
+                        .fileName(att.getFileName())
+                        .contentType(att.getContentType())
+                        .size(att.getSize())
+                        .objectKey(newObjectKey)
+                        .build();
+                newAttachment.setCreatedBy(userId);
+                attachmentRepository.save(newAttachment);
+                
+                activityEventService.logEvent(att.getOrganizationId(), entityType, toId, "ATTACHMENT_UPLOAD", userId, "Copied " + att.getFileName());
+            } catch (Exception e) {
+                log.error("Failed to copy attachment in MinIO: {}", e.getMessage(), e);
+            }
+        }
+    }
 }

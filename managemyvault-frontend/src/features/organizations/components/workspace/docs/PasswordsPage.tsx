@@ -143,10 +143,10 @@ export default function PasswordsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border-subtle pb-5">
         <div>
-          <span className="text-xs font-semibold text-brand-primary tracking-wider uppercase">
+          <span className="text-metadata font-semibold text-brand-primary tracking-wider uppercase">
             Core Documentation
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-1">
+          <h1 className="text-page-title text-text-primary mt-1">
             Passwords Vault
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
@@ -205,7 +205,7 @@ export default function PasswordsPage() {
                       <Key className="w-4.5 h-4.5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-text-primary">{cred.name}</h3>
+                      <h3 className="text-card-title text-text-primary">{cred.name}</h3>
                       {cred.url && (
                         <span className="text-[10px] text-text-muted font-mono">{cred.url}</span>
                       )}
@@ -344,7 +344,7 @@ export default function PasswordsPage() {
 
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-secondary">Password Alias / Name</label>
+                  <label className="text-form-label text-text-secondary">Password Alias / Name</label>
                   <input
                     type="text"
                     required
@@ -357,7 +357,7 @@ export default function PasswordsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-text-secondary">Username / Identity</label>
+                    <label className="text-form-label text-text-secondary">Username / Identity</label>
                     <input
                       type="text"
                       required
@@ -369,7 +369,7 @@ export default function PasswordsPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-text-secondary">Target Domain / IP URL</label>
+                    <label className="text-form-label text-text-secondary">Target Domain / IP URL</label>
                     <input
                       type="text"
                       value={form.url}
@@ -382,7 +382,7 @@ export default function PasswordsPage() {
 
                 <div className="space-y-1">
                   <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-bold text-text-secondary">Secure Password</label>
+                    <label className="text-form-label text-text-secondary">Secure Password</label>
                     <button
                       type="button"
                       onClick={handleGenerateInForm}
@@ -437,7 +437,7 @@ export default function PasswordsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-secondary">OTP Secret Seed (Optional)</label>
+                  <label className="text-form-label text-text-secondary">OTP Secret Seed (Optional)</label>
                   <input
                     type="text"
                     value={form.otpSecret}
@@ -448,7 +448,7 @@ export default function PasswordsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-secondary">Audit Logs & Notes</label>
+                  <label className="text-form-label text-text-secondary">Audit Logs & Notes</label>
                   <textarea
                     rows={4}
                     value={form.notes}

@@ -163,10 +163,10 @@ export default function AssetsPage() {
             <IconComponent className="w-6 h-6 text-brand-primary" />
           </div>
           <div>
-            <span className="text-xs font-semibold text-brand-primary tracking-wider uppercase">
+            <span className="text-metadata font-semibold text-brand-primary tracking-wider uppercase">
               Hardware Asset Engine
             </span>
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary mt-0.5">
+            <h1 className="text-page-title text-text-primary mt-0.5">
               {assetLabel}s
             </h1>
             <p className="text-sm text-text-secondary mt-0.5">
@@ -227,7 +227,7 @@ export default function AssetsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-border-subtle bg-vault-elevated/20 text-xs font-bold text-text-muted uppercase tracking-wider">
+                    <tr className="border-b border-border-subtle bg-vault-elevated/20 text-table-header text-text-muted">
                       <th className="p-3.5">Device Name</th>
                       <th className="p-3.5">IP Address</th>
                       <th className="p-3.5">Model / Vendor</th>
@@ -235,7 +235,7 @@ export default function AssetsPage() {
                       <th className="p-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-subtle text-sm">
+                  <tbody className="divide-y divide-border-subtle text-table-cell">
                     {assets.map((asset) => (
                       <tr
                         key={asset.id}
@@ -247,7 +247,7 @@ export default function AssetsPage() {
                         <td className="p-3.5 font-semibold text-text-primary">
                           {asset.name}
                         </td>
-                        <td className="p-3.5 font-mono text-xs text-text-secondary">
+                        <td className="p-3.5 text-code text-xs text-text-secondary">
                           {asset.ipAddress || '—'}
                         </td>
                         <td className="p-3.5 text-xs text-text-secondary">
@@ -305,7 +305,7 @@ export default function AssetsPage() {
                   >
                     <div className="flex justify-between items-start border-b border-border-subtle pb-3">
                       <div>
-                        <h3 className="font-bold text-text-primary text-base">{asset.name}</h3>
+                        <h3 className="text-card-title text-text-primary">{asset.name}</h3>
                         <p className="text-xs text-text-muted font-medium mt-0.5">{assetLabel}</p>
                       </div>
                       <button
@@ -319,15 +319,15 @@ export default function AssetsPage() {
                     <div className="space-y-3 text-xs">
                       <div>
                         <span className="text-text-muted block font-medium">IP Address</span>
-                        <span className="font-mono text-text-secondary block mt-0.5">{asset.ipAddress || 'Not Assigned'}</span>
+                        <span className="text-code text-text-secondary block mt-0.5">{asset.ipAddress || 'Not Assigned'}</span>
                       </div>
                       <div>
                         <span className="text-text-muted block font-medium">MAC Address</span>
-                        <span className="font-mono text-text-secondary block mt-0.5">{asset.macAddress || '—'}</span>
+                        <span className="text-code text-text-secondary block mt-0.5">{asset.macAddress || '—'}</span>
                       </div>
                       <div>
                         <span className="text-text-muted block font-medium">Serial Number</span>
-                        <span className="font-mono text-text-secondary block mt-0.5">{asset.serialNumber || '—'}</span>
+                        <span className="text-code text-text-secondary block mt-0.5">{asset.serialNumber || '—'}</span>
                       </div>
                       <div>
                         <span className="text-text-muted block font-medium">Hardware Model</span>
@@ -395,7 +395,7 @@ export default function AssetsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Device Display Name *
                     </label>
                     <input
@@ -409,7 +409,7 @@ export default function AssetsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Manufacturer
                     </label>
                     <input
@@ -422,7 +422,7 @@ export default function AssetsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Model / Specs
                     </label>
                     <input
@@ -435,7 +435,7 @@ export default function AssetsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       IP Address
                     </label>
                     <input
@@ -448,7 +448,7 @@ export default function AssetsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       MAC Address
                     </label>
                     <input
@@ -461,7 +461,7 @@ export default function AssetsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Serial Number
                     </label>
                     <input
@@ -474,7 +474,7 @@ export default function AssetsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       OS Version
                     </label>
                     <input
@@ -487,7 +487,7 @@ export default function AssetsPage() {
                   </div>
 
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Status
                     </label>
                     <select
@@ -502,7 +502,7 @@ export default function AssetsPage() {
                   </div>
 
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-text-muted uppercase mb-1.5">
+                    <label className="block text-form-label uppercase text-text-muted mb-1.5">
                       Operational Notes & Config Context
                     </label>
                     <textarea

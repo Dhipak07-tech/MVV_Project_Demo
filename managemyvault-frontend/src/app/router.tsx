@@ -5,6 +5,7 @@ import OrganizationsPage from '../features/organizations/components/Organization
 import WorkspaceLayout from '../features/organizations/components/WorkspaceLayout';
 import WorkspaceHome from '../features/organizations/components/WorkspaceHome';
 import ComingSoon from '../features/organizations/components/ComingSoon';
+import GlobalDashboard from '../features/dashboard/components/GlobalDashboard';
 
 // Sprint 2 Pages
 import ContactsPage from '../features/organizations/components/workspace/ContactsPage';
@@ -47,7 +48,8 @@ export const router = createBrowserRouter([
     path: '/',
     element: <RequireAuth><AppShell /></RequireAuth>,
     children: [
-      { index: true, element: <Navigate to="/organizations" replace /> },
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: 'dashboard', element: <GlobalDashboard /> },
       { path: 'organizations', element: <OrganizationsPage /> },
       { path: 'organizations/:orgId', element: <RedirectToWorkspace /> },
       {
